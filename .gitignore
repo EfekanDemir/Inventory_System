@@ -110,3 +110,8 @@ android-app/build/
 android-app/captures/
 android-app/.externalNativeBuild/
 android-app/.cxx/
+
+# ---- Markdown ----
+*.md
+!README.md
+!CONTRIBUTING.md
