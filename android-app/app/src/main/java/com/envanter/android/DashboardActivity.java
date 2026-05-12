@@ -1,19 +1,33 @@
 package com.envanter.android;
 
 import android.os.Bundle;
-import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.envanter.mobile.model.ItemStock;
+import com.envanter.mobile.view.StockLevelBarChartView;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class DashboardActivity extends AppCompatActivity {
+
+    private StockLevelBarChartView stockBarChart;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        // Gecici olarak basit bir TextView
-        TextView tv = new TextView(this);
-        tv.setText("Dashboard (Yönlendirme Başarılı!)");
-        tv.setTextSize(24f);
-        tv.setPadding(32, 32, 32, 32);
-        setContentView(tv);
+        setContentView(R.layout.activity_dashboard);
+
+        stockBarChart = findViewById(R.id.stockBarChart);
+
+        // Demo (Mock) Veri Ekliyoruz
+        List<ItemStock> mockItems = new ArrayList<>();
+        mockItems.add(new ItemStock("Laptop", 50, 20));  // Yeşil
+        mockItems.add(new ItemStock("Mouse", 25, 20));   // Turuncu
+        mockItems.add(new ItemStock("Klavye", 5, 10));   // Kırmızı (Kritik)
+        mockItems.add(new ItemStock("Monitör", 12, 10)); // Turuncu
+        mockItems.add(new ItemStock("Kablo", 100, 50));  // Yeşil
+
+        stockBarChart.setItems(mockItems);
     }
 }
