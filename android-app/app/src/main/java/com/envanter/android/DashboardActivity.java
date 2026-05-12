@@ -29,5 +29,13 @@ public class DashboardActivity extends AppCompatActivity {
         mockItems.add(new ItemStock("Kablo", 100, 50));  // Yeşil
 
         stockBarChart.setItems(mockItems);
+
+        // --- Pie Chart (Kategori Dagilimi) Verisi ---
+        categoryPieChart = findViewById(R.id.categoryPieChart);
+
+        float[] percentages = {40.5f, 25.0f, 15.0f, 10.0f, 7.5f, 2.0f};
+        String[] categories = {"Elektronik", "Sarf Malzemesi", "Mobilya", "Yazılım", "Temizlik", "Diğer"};
+        
+        categoryPieChart.setData(percentages, categories);
     }
 }
