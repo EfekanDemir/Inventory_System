@@ -1,0 +1,97 @@
+version: '3.8'
+
+# =============================================
+# Campus Management System — Docker Compose
+# PostgreSQL 15 | MongoDB 6 | Redis 7
+# Network: envanter-network (bridge)
+# =============================================
+
+services:
+
+  # ── PostgreSQL 15 ──────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: envanter-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: envanter_db
+      POSTGRES_USER: envanter_user
+      POSTGRES_PASSWORD: envanter_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - envanter-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U envanter_user -d envanter_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── MongoDB 6 ──────────────────────────────
+  mongodb:
+    image: mongo:6-jammy
+    container_name: envanter-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: envanter_admin
+      MONGO_INITDB_ROOT_PASSWORD: envanter_pass
+      MONGO_INITDB_DATABASE: envanter_logs
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - envanter-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Redis 7 ────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: envanter-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass envanter_redis_pass
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - envanter-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "envanter_redis_pass", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── NOT: Mikroservisler Commit 3'te eklenecek ──
+  # user-service, inventory-service, notification-service, kong
+  # depends_on: postgres (service_healthy), mongodb (service_healthy), redis (service_healthy)
+
+# ── Volumes ──────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ── Networks ─────────────────────────────────
+networks:
+  envanter-network:
+    driver: bridge
+    name: envanter-network
