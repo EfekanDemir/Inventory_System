@@ -1,0 +1,13 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/envanter_db
+    username: envanter_user
+    password: envanter_pass
+  data:
+    redis:
+      host: localhost
+      port: 6379

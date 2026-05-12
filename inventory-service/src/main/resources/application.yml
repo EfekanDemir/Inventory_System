@@ -1,0 +1,12 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/envanter_db
+    username: envanter_user
+    password: envanter_pass
+  data:
+    mongodb:
+      uri: mongodb://envanter_admin:envanter_pass@localhost:27017/envanter_logs?authSource=admin
