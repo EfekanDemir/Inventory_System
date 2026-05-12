@@ -3,17 +3,21 @@ package com.envanter.android;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.envanter.android.api.ApiClient;
 import com.envanter.android.api.ApiService;
+import com.envanter.android.api.GenericResponse;
 import com.envanter.android.model.LoginRequest;
-import com.envanter.android.model.LoginResponse;
+import com.envanter.android.model.UserDTO;
+import com.envanter.android.util.ApiErrorHandler;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -24,25 +28,31 @@ public class LoginActivity extends AppCompatActivity {
     private EditText etUsername;
     private EditText etPassword;
     private Button btnLogin;
+    private ProgressBar progressBar;
     private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Auto-login (Oturum hatirlama) mekanizmasi
+        SharedPreferences prefs = getSharedPreferences("envanter_prefs", MODE_PRIVATE);
+        String token = prefs.getString("jwt_token", null);
+        if (token != null && !token.isEmpty()) {
+            goToDashboard();
+            return;
+        }
+
         setContentView(R.layout.activity_login);
 
         etUsername = findViewById(R.id.etUsername);
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
+        progressBar = findViewById(R.id.progressBar);
 
-        apiService = ApiClient.getClient().create(ApiService.class);
+        apiService = ApiClient.getClient(this).create(ApiService.class);
 
-        btnLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                performLogin();
-            }
-        });
+        btnLogin.setOnClickListener(v -> performLogin());
     }
 
     private void performLogin() {
@@ -50,47 +60,55 @@ public class LoginActivity extends AppCompatActivity {
         String password = etPassword.getText().toString().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Lütfen kullanıcı adı ve şifre girin", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Lütfen tüm alanları doldurun", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        LoginRequest request = new LoginRequest(username, password);
-        Call<LoginResponse> call = apiService.login(request);
+        progressBar.setVisibility(View.VISIBLE);
+        btnLogin.setEnabled(false);
 
-        call.enqueue(new Callback<LoginResponse>() {
+        LoginRequest request = new LoginRequest(username, password);
+        Call<GenericResponse<UserDTO>> call = apiService.login(request);
+
+        call.enqueue(new Callback<GenericResponse<UserDTO>>() {
             @Override
-            public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
+            public void onResponse(Call<GenericResponse<UserDTO>> call, Response<GenericResponse<UserDTO>> response) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    btnLogin.setEnabled(true);
+                });
+
                 if (response.isSuccessful() && response.body() != null) {
-                    // Token kaydet
-                    saveToken(response.body().getToken());
-                    Toast.makeText(LoginActivity.this, "Giriş Başarılı", Toast.LENGTH_SHORT).show();
-                    
-                    // Dashboard'a geç
-                    Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
-                    startActivity(intent);
-                    finish();
+                    // Token basariyla alindi, SharedPreferences'e kaydet
+                    saveToken(response.body().getData().getToken());
+                    Toast.makeText(LoginActivity.this, "Giriş Başarılı!", Toast.LENGTH_SHORT).show();
+                    goToDashboard();
                 } else {
-                    if (response.code() == 401) {
-                        Toast.makeText(LoginActivity.this, "Hata: Yetkisiz erişim (401)", Toast.LENGTH_LONG).show();
-                    } else if (response.code() == 404) {
-                        Toast.makeText(LoginActivity.this, "Hata: Kullanıcı bulunamadı (404)", Toast.LENGTH_LONG).show();
-                    } else {
-                        Toast.makeText(LoginActivity.this, "Giriş başarısız: " + response.code(), Toast.LENGTH_SHORT).show();
-                    }
+                    // Merkezi Hata Yonetimi
+                    runOnUiThread(() -> ApiErrorHandler.handleError(LoginActivity.this, response.code()));
                 }
             }
 
             @Override
-            public void onFailure(Call<LoginResponse> call, Throwable t) {
-                Toast.makeText(LoginActivity.this, "Ağ Hatası: " + t.getMessage(), Toast.LENGTH_LONG).show();
+            public void onFailure(Call<GenericResponse<UserDTO>> call, Throwable t) {
+                Log.e("API_ERROR", "Login failed", t);
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    btnLogin.setEnabled(true);
+                    Toast.makeText(LoginActivity.this, "Ağ Hatası: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                });
             }
         });
     }
 
     private void saveToken(String token) {
         SharedPreferences prefs = getSharedPreferences("envanter_prefs", MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putString("jwt_token", token);
-        editor.apply();
+        prefs.edit().putString("jwt_token", token).apply();
+    }
+
+    private void goToDashboard() {
+        Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
+        startActivity(intent);
+        finish();
     }
 }
