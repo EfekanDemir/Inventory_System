@@ -4,44 +4,59 @@ import com.envanter.notification.exception.NotificationValidationException;
 import com.envanter.notification.strategy.EmailSenderStrategy;
 import com.envanter.notification.strategy.NotificationStrategy;
 import com.envanter.notification.strategy.PushNotificationStrategy;
+import org.springframework.stereotype.Component;
 
 /**
- * Bildirim stratejisi olusturucu -- Factory Pattern.
+ * Bildirim stratejisi oluşturucu — Factory Pattern + Spring DI entegrasyonu.
  *
- * Kullanim:
- *   NotificationStrategy strategy = NotificationFactory.createStrategy("EMAIL");
- *   strategy.send(request);
+ * <p>Open/Closed Principle: Yeni bir bildirim kanalı eklemek için
+ * yeni bir NotificationStrategy impl yazılır ve bu factory'e eklenir.
+ * Mevcut kod değişmez.</p>
  *
- * Desteklenen tipler: EMAIL, PUSH
- * Bilinmeyen tip -> NotificationValidationException (HTTP 400)
+ * Desteklenen tipler: EMAIL, PUSH, LOW_STOCK
  */
+@Component
 public class NotificationFactory {
 
-    private NotificationFactory() {
-        // Utility sinif -- instantiate edilemez
+    private final EmailSenderStrategy       emailSenderStrategy;
+    private final PushNotificationStrategy  pushNotificationStrategy;
+
+    public NotificationFactory(EmailSenderStrategy emailSenderStrategy,
+                               PushNotificationStrategy pushNotificationStrategy) {
+        this.emailSenderStrategy      = emailSenderStrategy;
+        this.pushNotificationStrategy = pushNotificationStrategy;
     }
 
     /**
-     * Verilen tipe gore uygun NotificationStrategy doner.
+     * Verilen tipe göre uygun NotificationStrategy döner.
      *
-     * @param type EMAIL | PUSH
-     * @return Ilgili strateji implementasyonu
-     * @throws NotificationValidationException bilinmeyen tip icin
+     * @param type EMAIL | PUSH | LOW_STOCK
+     * @return İlgili strateji implementasyonu (singleton bean)
+     * @throws NotificationValidationException bilinmeyen tip için
      */
-    public static NotificationStrategy createStrategy(String type) {
+    public NotificationStrategy createStrategy(String type) {
         if (type == null || type.isBlank()) {
-            throw new NotificationValidationException("Bildirim tipi bos olamaz.");
+            throw new NotificationValidationException("Bildirim tipi boş olamaz.");
         }
 
-        switch (type.toUpperCase()) {
-            case "EMAIL":
-                return new EmailSenderStrategy();
-            case "PUSH":
-                return new PushNotificationStrategy();
-            default:
-                throw new NotificationValidationException(
-                        "Bilinmeyen bildirim tipi: '" + type + "'. Desteklenen tipler: EMAIL, PUSH"
-                );
-        }
+        return switch (type.toUpperCase()) {
+            case "EMAIL"     -> emailSenderStrategy;
+            case "PUSH"      -> pushNotificationStrategy;
+            // LOW_STOCK → e-posta üzerinden gönderilir (varsayılan kanal)
+            case "LOW_STOCK",
+                 "INVENTORY_ADDED",
+                 "STOCK_MOVEMENT" -> emailSenderStrategy;
+            default -> throw new NotificationValidationException(
+                    "Bilinmeyen bildirim tipi: '" + type +
+                    "'. Desteklenen tipler: EMAIL, PUSH, LOW_STOCK, INVENTORY_ADDED, STOCK_MOVEMENT");
+        };
+    }
+
+    /**
+     * Birincil (varsayılan) bildirim stratejisini döner.
+     * Genellikle EMAIL kullanılır.
+     */
+    public NotificationStrategy defaultStrategy() {
+        return emailSenderStrategy;
     }
 }
