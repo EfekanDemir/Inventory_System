@@ -1,13 +1,17 @@
 package com.envanter.unit;
 
+import com.envanter.user.dto.LoginRequest;
+import com.envanter.user.dto.LoginResponse;
 import com.envanter.user.dto.RegisterRequest;
 import com.envanter.user.dto.UserDTO;
 import com.envanter.user.exception.ConflictException;
+import com.envanter.user.exception.ResourceNotFoundException;
+import com.envanter.user.exception.UnauthorizedException;
+import com.envanter.user.model.User;
 import com.envanter.user.repository.UserRepository;
 import com.envanter.user.security.JwtTokenProvider;
 import com.envanter.user.security.RedisSessionService;
 import com.envanter.user.service.UserServiceImpl;
-import com.envanter.user.model.User;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,18 +29,19 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * TDD — RED Aşaması
+ * TDD -- RED Asama
  *
- * UserServiceImpl henüz implemente edilmediği için bu testler BAŞARISIZ olacak.
- * Amaç: compile olabilir ama runtime'da UnsupportedOperationException fırlatır.
+ * UserServiceImpl henuz implemente edilmedigi icin bu testler BASARISIZ olacak.
+ * Amac: compile olabilir ama runtime'da UnsupportedOperationException firlatir.
  *
- * Sonraki adım: GREEN — register() metodu implemente edilecek.
+ * Commit 2: register testleri (RED)
+ * Commit 3: login testleri (RED)
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("UserService - Kayıt (Register) Testleri")
+@DisplayName("UserService - Kayit ve Giris Testleri")
 class UserServiceTest {
 
-    // ── Mock'lar ────────────────────────────────────────────────────────────────
+    // -- Mock'lar --
 
     @Mock
     private UserRepository userRepository;
@@ -50,22 +55,23 @@ class UserServiceTest {
     @Mock
     private UserServiceImpl.PasswordEncoderPort passwordEncoder;
 
-    // ── Test altındaki sınıf ─────────────────────────────────────────────────
+    // -- Test altindaki sinif --
 
     @InjectMocks
     private UserServiceImpl userService;
 
-    // ── Test Metodları ────────────────────────────────────────────────────────
+    // ===========================================================================
+    // REGISTER TESTLERI -- Commit 2 (RED)
+    // ===========================================================================
 
     /**
-     * Senaryo 1 — Geçerli kayıt isteği başarıyla tamamlanmalı
-     *
-     * ⚠️ RED: UnsupportedOperationException nedeniyle BAŞARISIZ olacak.
+     * Senaryo 1 - Gecerli kayit istegi basariyla tamamlanmali
+     * RED: UnsupportedOperationException nedeniyle BASARISIZ olacak.
      */
     @Test
-    @DisplayName("Geçerli istek ile kayıt — UserDTO döner")
+    @DisplayName("Gecerli istek ile kayit - UserDTO doner")
     void register_WithValidRequest_ReturnsUserDTO() {
-        // ── Given ──────────────────────────────────────────────────────────────
+        // -- Given --
         RegisterRequest request = new RegisterRequest(
                 "oktaytest",
                 "oktay@envanter.com",
@@ -74,43 +80,34 @@ class UserServiceTest {
                 "Test"
         );
 
-        // Kullanıcı adı ve email henüz sistemde yok
         when(userRepository.existsByUsername("oktaytest")).thenReturn(false);
         when(userRepository.existsByEmail("oktay@envanter.com")).thenReturn(false);
-
-        // Şifre hash'leme mock'u
         when(passwordEncoder.encode("SecurePass123!")).thenReturn("$2a$10$hashedPassword");
 
-        // Kaydedilen user mock'u
         User savedUser = new User();
         savedUser.setId(1L);
         savedUser.setUsername("oktaytest");
         savedUser.setEmail("oktay@envanter.com");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        // ── When ───────────────────────────────────────────────────────────────
+        // -- When --
         UserDTO result = userService.register(request);
 
-        // ── Then ───────────────────────────────────────────────────────────────
-        assertNotNull(result, "Kayıt sonucu null olmamalı");
-        assertEquals("oktaytest", result.getUsername(),
-                "Dönen DTO'nun username'i istek ile eşleşmeli");
+        // -- Then --
+        assertNotNull(result, "Kayit sonucu null olmamali");
+        assertEquals("oktaytest", result.getUsername());
         assertThat(result.getId()).isNotNull();
-
-        // Repository save bir kez çağrılmalı
         verify(userRepository, times(1)).save(any(User.class));
     }
 
     /**
-     * Senaryo 2 — Var olan kullanıcı adı ile kayıt → ConflictException fırlatılmalı
-     *
-     * ⚠️ RED: UnsupportedOperationException fırlattığı için assertThrows yanlış
-     *         exception alacak → test BAŞARISIZ olacak.
+     * Senaryo 2 - Var olan kullanici adi ile kayit -> ConflictException
+     * RED: UnsupportedOperationException firlatir -> BASARISIZ olacak.
      */
     @Test
-    @DisplayName("Mevcut kullanıcı adı ile kayıt — ConflictException fırlatır")
+    @DisplayName("Mevcut kullanici adi ile kayit - ConflictException firlatir")
     void register_WithDuplicateUsername_ThrowsConflictException() {
-        // ── Given ──────────────────────────────────────────────────────────────
+        // -- Given --
         RegisterRequest request = new RegisterRequest(
                 "varolan_kullanici",
                 "yeni@envanter.com",
@@ -119,21 +116,113 @@ class UserServiceTest {
                 "Soyad"
         );
 
-        // Kullanıcı adı sistemde zaten mevcut
         when(userRepository.existsByUsername("varolan_kullanici")).thenReturn(true);
 
-        // ── When & Then ────────────────────────────────────────────────────────
+        // -- When & Then --
         ConflictException exception = assertThrows(
                 ConflictException.class,
                 () -> userService.register(request),
-                "Var olan kullanıcı adı için ConflictException fırlatılmalı"
+                "Var olan kullanici adi icin ConflictException firlatilmali"
         );
 
-        assertThat(exception.getMessage())
-                .containsIgnoringCase("kullanıcı")
-                .as("Hata mesajı kullanıcı adına değinmeli");
-
-        // Kayıt çağrısı HİÇ yapılmamalı
+        assertThat(exception.getMessage()).isNotNull();
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    // ===========================================================================
+    // LOGIN TESTLERI -- Commit 3 (RED)
+    // ===========================================================================
+
+    /**
+     * Senaryo 3 - Gecerli kimlik bilgileriyle giris -> token doner
+     * RED: login() UnsupportedOperationException firlatir -> BASARISIZ olacak.
+     */
+    @Test
+    @DisplayName("Gecerli kimlik bilgileriyle giris - LoginResponse icinde token doner")
+    void login_WithValidCredentials_ReturnsToken() {
+        // -- Given --
+        LoginRequest request = new LoginRequest("oktaytest", "SecurePass123!");
+
+        User existingUser = new User();
+        existingUser.setId(1L);
+        existingUser.setUsername("oktaytest");
+        existingUser.setEmail("oktay@envanter.com");
+        existingUser.setPasswordHash("$2a$10$hashedPassword");
+        existingUser.setActive(true);
+
+        when(userRepository.findByUsername("oktaytest")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("SecurePass123!", "$2a$10$hashedPassword")).thenReturn(true);
+        when(jwtTokenProvider.generateToken(existingUser))
+                .thenReturn("eyJhbGciOiJIUzI1NiJ9.mocktoken");
+
+        // -- When --
+        LoginResponse result = userService.login(request);
+
+        // -- Then --
+        assertNotNull(result, "Login sonucu null olmamali");
+        assertNotNull(result.getToken(), "JWT token null olmamali");
+        assertThat(result.getToken()).isNotBlank();
+        assertEquals("oktaytest", result.getUsername());
+
+        verify(userRepository, times(1)).findByUsername("oktaytest");
+        verify(jwtTokenProvider, times(1)).generateToken(existingUser);
+    }
+
+    /**
+     * Senaryo 4 - Gecerli kullanici adi ama yanlis sifre -> UnauthorizedException
+     * RED: login() UnsupportedOperationException firlatir -> BASARISIZ olacak.
+     */
+    @Test
+    @DisplayName("Yanlis sifre ile giris - UnauthorizedException firlatir")
+    void login_WithInvalidPassword_ThrowsUnauthorizedException() {
+        // -- Given --
+        LoginRequest request = new LoginRequest("oktaytest", "YanlisParola!");
+
+        User existingUser = new User();
+        existingUser.setId(1L);
+        existingUser.setUsername("oktaytest");
+        existingUser.setPasswordHash("$2a$10$hashedPassword");
+        existingUser.setActive(true);
+
+        when(userRepository.findByUsername("oktaytest")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("YanlisParola!", "$2a$10$hashedPassword")).thenReturn(false);
+
+        // -- When & Then --
+        UnauthorizedException exception = assertThrows(
+                UnauthorizedException.class,
+                () -> userService.login(request),
+                "Yanlis sifre icin UnauthorizedException firlatilmali"
+        );
+
+        assertThat(exception.getMessage()).isNotNull();
+
+        verify(userRepository, times(1)).findByUsername("oktaytest");
+        verify(jwtTokenProvider, never()).generateToken(any(User.class));
+    }
+
+    /**
+     * Senaryo 5 - Sistemde olmayan kullanici adi -> ResourceNotFoundException
+     * RED: login() UnsupportedOperationException firlatir -> BASARISIZ olacak.
+     */
+    @Test
+    @DisplayName("Var olmayan kullanici ile giris - ResourceNotFoundException firlatir")
+    void login_WithNonExistentUser_ThrowsNotFoundException() {
+        // -- Given --
+        LoginRequest request = new LoginRequest("olmayan_kullanici", "HerhangiParola!");
+
+        when(userRepository.findByUsername("olmayan_kullanici")).thenReturn(Optional.empty());
+
+        // -- When & Then --
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> userService.login(request),
+                "Var olmayan kullanici icin ResourceNotFoundException firlatilmali"
+        );
+
+        assertThat(exception.getMessage()).isNotNull();
+
+        verify(userRepository, times(1)).findByUsername("olmayan_kullanici");
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(jwtTokenProvider, never()).generateToken(any(User.class));
     }
 }

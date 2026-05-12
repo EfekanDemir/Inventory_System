@@ -1,5 +1,7 @@
 package com.envanter.user.service;
 
+import com.envanter.user.dto.LoginRequest;
+import com.envanter.user.dto.LoginResponse;
 import com.envanter.user.dto.RegisterRequest;
 import com.envanter.user.dto.UserDTO;
 import com.envanter.user.repository.UserRepository;
@@ -37,12 +39,22 @@ public class UserServiceImpl implements UserService {
 
     /**
      * ⚠️ RED: Henüz implemente edilmedi.
-     * Bu metot her zaman null döner → test BAŞARISIZ olacak.
+     * Bu metot UnsupportedOperationException fırlatır → register testleri BAŞARISIZ olacak.
      */
     @Override
     public UserDTO register(RegisterRequest request) {
         // TODO: implement in GREEN phase
         throw new UnsupportedOperationException("register() henüz implemente edilmedi — RED aşaması");
+    }
+
+    /**
+     * ⚠️ RED: Henüz implemente edilmedi.
+     * Bu metot UnsupportedOperationException fırlatır → login testleri BAŞARISIZ olacak.
+     */
+    @Override
+    public LoginResponse login(LoginRequest request) {
+        // TODO: implement in GREEN phase
+        throw new UnsupportedOperationException("login() henüz implemente edilmedi — RED aşaması");
     }
 
     /**
