@@ -1,0 +1,129 @@
+_format_version: "3.0"
+_transform: true
+
+# ============================================================
+# Kong Gateway – Declarative (DB-less) Configuration
+# TBL324 Envanter Takip Sistemi
+# Kong 3.5-alpine | KONG_DATABASE: off
+# ============================================================
+
+# ------------------------------------------------------------
+# Upstream Services
+# ------------------------------------------------------------
+services:
+  - name: user-service
+    url: http://user-service:8081
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    routes:
+      - name: user-service-route
+        paths:
+          - /api/users
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: local
+              fault_tolerant: true
+              hide_client_headers: false
+          - name: key-auth
+            config:
+              key_names:
+                - apikey
+                - x-api-key
+              hide_credentials: true
+
+  - name: inventory-service
+    url: http://inventory-service:8082
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    routes:
+      - name: inventory-service-route
+        paths:
+          - /api/inventory
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: local
+              fault_tolerant: true
+              hide_client_headers: false
+          - name: key-auth
+            config:
+              key_names:
+                - apikey
+                - x-api-key
+              hide_credentials: true
+
+  - name: notification-service
+    url: http://notification-service:8083
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    retries: 3
+    routes:
+      - name: notification-service-route
+        paths:
+          - /api/notifications
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        plugins:
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: local
+              fault_tolerant: true
+              hide_client_headers: false
+          - name: key-auth
+            config:
+              key_names:
+                - apikey
+                - x-api-key
+              hide_credentials: true
+
+# ------------------------------------------------------------
+# Global Plugins (tum route'lara uygulanir)
+# ------------------------------------------------------------
+plugins:
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid#counter
+      echo_downstream: true
+
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - X-Powered-By:envanter-gateway
+
+# ------------------------------------------------------------
+# Consumers (API Anahtari Sahibi Istemciler)
+# ------------------------------------------------------------
+consumers:
+  - username: envanter-client
+    custom_id: envanter-client-001
+    keyauth_credentials:
+      - key: envanter-api-key-2026

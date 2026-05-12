@@ -1,14 +1,15 @@
 version: '3.8'
 
 # =============================================
-# Campus Management System — Docker Compose
+# TBL324 Envanter Takip Sistemi – Docker Compose
 # PostgreSQL 15 | MongoDB 6 | Redis 7
+# Kong 3.5 (DB-less) | Spring Boot Microservices
 # Network: envanter-network (bridge)
 # =============================================
 
 services:
 
-  # ── PostgreSQL 15 ──────────────────────────
+  # ── PostgreSQL 15 ─────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: envanter-postgres
@@ -31,7 +32,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # ── MongoDB 6 ──────────────────────────────
+  # ── MongoDB 6 ─────────────────────────────────────────────
   mongodb:
     image: mongo:6-jammy
     container_name: envanter-mongodb
@@ -53,7 +54,7 @@ services:
       retries: 5
       start_period: 30s
 
-  # ── Redis 7 ────────────────────────────────
+  # ── Redis 7 ───────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: envanter-redis
@@ -77,11 +78,151 @@ services:
       retries: 5
       start_period: 10s
 
-  # ── NOT: Mikroservisler Commit 3'te eklenecek ──
-  # user-service, inventory-service, notification-service, kong
-  # depends_on: postgres (service_healthy), mongodb (service_healthy), redis (service_healthy)
+  # ── user-service ──────────────────────────────────────────
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: envanter-user-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/envanter_db
+      SPRING_DATASOURCE_USERNAME: envanter_user
+      SPRING_DATASOURCE_PASSWORD: envanter_pass
+      SPRING_DATA_MONGODB_URI: mongodb://envanter_admin:envanter_pass@mongodb:27017/envanter_logs?authSource=admin
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: envanter_redis_pass
+      SERVER_PORT: 8081
+    ports:
+      - "8081:8081"
+    networks:
+      - envanter-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
-# ── Volumes ──────────────────────────────────
+  # ── inventory-service ─────────────────────────────────────
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    container_name: envanter-inventory-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/envanter_db
+      SPRING_DATASOURCE_USERNAME: envanter_user
+      SPRING_DATASOURCE_PASSWORD: envanter_pass
+      SPRING_DATA_MONGODB_URI: mongodb://envanter_admin:envanter_pass@mongodb:27017/envanter_logs?authSource=admin
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: envanter_redis_pass
+      SERVER_PORT: 8082
+    ports:
+      - "8082:8082"
+    networks:
+      - envanter-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── notification-service ──────────────────────────────────
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: envanter-notification-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://envanter_admin:envanter_pass@mongodb:27017/envanter_logs?authSource=admin
+      SPRING_MAIL_HOST: mailhog
+      SPRING_MAIL_PORT: 1025
+      SPRING_MAIL_USERNAME: ""
+      SPRING_MAIL_PASSWORD: ""
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
+      SERVER_PORT: 8083
+    ports:
+      - "8083:8083"
+    networks:
+      - envanter-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Mailhog (Test SMTP) ───────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: envanter-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - envanter-network
+
+  # ── Kong Gateway 3.5 (DB-less) ────────────────────────────
+  kong:
+    image: kong:3.5-alpine
+    container_name: envanter-kong
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_PROXY_LISTEN: "0.0.0.0:8000"
+    ports:
+      - "8000:8000"   # Kong Proxy (tüm API trafiği)
+      - "8001:8001"   # Kong Admin API
+    volumes:
+      - ./kong-config:/kong/declarative
+    networks:
+      - envanter-network
+    depends_on:
+      user-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# ── Volumes ───────────────────────────────────────────────
 volumes:
   postgres_data:
     driver: local
@@ -90,7 +231,7 @@ volumes:
   redis_data:
     driver: local
 
-# ── Networks ─────────────────────────────────
+# ── Networks ──────────────────────────────────────────────
 networks:
   envanter-network:
     driver: bridge
