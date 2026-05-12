@@ -10,13 +10,14 @@
     </parent>
 
     <groupId>com.envanter</groupId>
-    <artifactId>campus-management-system</artifactId>
+    <artifactId>envanter-takip-sistemi</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>campus-management-system</name>
+    <name>envanter-takip-sistemi</name>
     <description>TBL324 Envanter Takip Sistemi</description>
 
     <modules>
+        <module>common-lib</module>
         <module>user-service</module>
         <module>inventory-service</module>
         <module>notification-service</module>
