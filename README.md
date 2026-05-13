@@ -29,19 +29,136 @@
 
 ## 2. Sistem Mimarisi
 
-> ⚠️ *Mermaid C4 Container diyagramı eklenecek.*
+### 🌐 Mikroservisler ve Ağ Geçidi İletişimi
+Aşağıdaki diyagram, Android uygulamasından gelen isteklerin Kong Gateway üzerinden mikroservislere ve veritabanlarına nasıl dağıldığını gösterir.
+
+```mermaid
+graph TD
+    A[Android App] -->|API İstekleri| B[Kong Gateway]
+    B -->|/api/users| C[user-service]
+    B -->|/api/inventory| D[inventory-service]
+    B -->|/api/notifications| E[notification-service]
+    
+    C -->|Okuma/Yazma| F[(PostgreSQL)]
+    C -->|Session/Token| G[(Redis)]
+    
+    D -->|Okuma/Yazma| F
+    D -->|Event| E
+    
+    E -->|Log & Uyarı| H[(MongoDB)]
+```
 
 ---
 
 ## 3. Veritabanı Şeması
 
-> ⚠️ *ER Diyagramı (PostgreSQL + MongoDB) eklenecek.*
+### 🗄️ Varlık-İlişki (ER) Diyagramı
+Aşağıdaki ER diyagramı, ilişkisel veritabanında (PostgreSQL) tutulan ana tabloları, alanlarını ve aralarındaki bağlantıları temsil eder.
+
+```mermaid
+erDiagram
+    User ||--o{ StockMovement : "yapar"
+    Item ||--o{ StockMovement : "hareketini içerir"
+    Category ||--|{ Item : "kategorilendirir"
+
+    User {
+        Long id PK
+        String username
+        String email
+        String password
+        String role
+        LocalDateTime createdAt
+    }
+
+    Item {
+        Long id PK
+        String itemCode
+        String name
+        Long categoryId FK
+        Integer quantity
+        Integer minStockLevel
+        String status
+    }
+
+    Category {
+        Long id PK
+        String name
+        String description
+    }
+
+    StockMovement {
+        Long id PK
+        Long itemId FK
+        String movementType
+        Integer quantity
+        LocalDateTime createdAt
+    }
+```
 
 ---
 
 ## 4. API Akış Diyagramı
 
-> ⚠️ *Sequence diyagramları eklenecek.*
+### 🔄 Kritik Senaryolar Sequence Diyagramları
+
+#### 1. Kullanıcı Girişi (Login Akışı)
+Kullanıcının kimlik doğrulaması yapıp Redis üzerinde session açması süreci.
+```mermaid
+sequenceDiagram
+    participant A as Android
+    participant K as Kong Gateway
+    participant U as UserService
+    participant R as Redis
+
+    A->>K: POST /api/users/login (Credentials)
+    K->>U: Yönlendir
+    U->>U: Şifre Doğrulama
+    U->>R: Oturum aç ve Token kaydet
+    R-->>U: OK
+    U-->>K: 200 OK + JWT Token
+    K-->>A: JSON Response (Token)
+```
+
+#### 2. Yeni Ürün Ekleme (Create Item)
+Sisteme yetkili bir kullanıcının yeni bir stok kalemi eklemesi.
+```mermaid
+sequenceDiagram
+    participant A as Android
+    participant K as Kong Gateway
+    participant I as InventoryService
+    participant DB as PostgreSQL
+
+    A->>K: POST /api/inventory/items (JWT, Payload)
+    K->>I: İstek Yönlendirme (Token Valide)
+    I->>I: Validasyon (GenericValidator)
+    I->>DB: INSERT INTO items
+    DB-->>I: ID Döner
+    I-->>K: 201 Created + ItemDTO
+    K-->>A: JSON Response
+```
+
+#### 3. Stok Hareketi ve Uyarı (Stock Movement)
+Stok düştüğünde MongoDB üzerine uyarı loglanması.
+```mermaid
+sequenceDiagram
+    participant A as Android
+    participant K as Kong Gateway
+    participant I as InventoryService
+    participant N as NotificationService
+    participant M as MongoDB
+
+    A->>K: POST /api/inventory/movements (OUT, qty)
+    K->>I: İstek Yönlendirme
+    I->>I: Stok Yeterliliği Kontrolü
+    I->>I: Miktar Güncellemesi
+    opt Stok < minStockLevel
+        I->>N: Asenkron Bildirim İsteği (Event)
+        N->>M: LowStockAlert Logu Kaydet
+        M-->>N: OK
+    end
+    I-->>K: 200 OK
+    K-->>A: JSON Response
+```
 
 ---
 
