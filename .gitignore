@@ -100,16 +100,23 @@ application-local.properties
 k6-tests/reports/*.json
 k6-tests/reports/*.csv
 
-# ---- Android (varsa) ----
+# ---- Android & Gradle ----
+.gradle/
+**/build/
 *.apk
 *.aab
 *.ap_
 local.properties
 android-app/.gradle/
 android-app/build/
+android-app/app/build/
 android-app/captures/
 android-app/.externalNativeBuild/
 android-app/.cxx/
+android-app/local.properties
+*.dex
+*.class
+
 
 # ---- Markdown ----
 *.md
