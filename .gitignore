@@ -115,3 +115,4 @@ android-app/.cxx/
 *.md
 !README.md
 !CONTRIBUTING.md
+target/ 
