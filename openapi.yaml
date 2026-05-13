@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: TBL324 Envanter Takip Sistemi API
+  description: Mikroservis mimarisi tabanlı envanter yönetim sistemi API dokümantasyonu.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Kong Gateway Proxy (Development)
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/users/register:
+    post:
+      tags:
+        - User
+      summary: Yeni kullanıcı kaydı
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Başarılı kayıt
+        '400':
+          description: Geçersiz veri
+        '409':
+          description: Kullanıcı zaten mevcut
+
+  /api/users/login:
+    post:
+      tags:
+        - User
+      summary: Kullanıcı girişi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Başarılı giriş
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Hatalı şifre veya kullanıcı adı
+
+  /api/inventory/items:
+    get:
+      tags:
+        - Inventory
+      summary: Tüm ürünleri listele
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Ürün listesi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ItemDTO'
+    post:
+      tags:
+        - Inventory
+      summary: Yeni ürün ekle
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemRequest'
+      responses:
+        '201':
+          description: Ürün başarıyla oluşturuldu
+
+  /api/inventory/movements:
+    post:
+      tags:
+        - Inventory
+      summary: Stok hareketi oluştur (Giriş/Çıkış)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockMovementRequest'
+      responses:
+        '201':
+          description: Hareket başarıyla işlendi
+        '409':
+          description: Yetersiz stok (Çıkış işlemi için)
+
+  /api/notifications/logs:
+    get:
+      tags:
+        - Notification
+      summary: Bildirim loglarını getir
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Log listesi
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: api-key
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        username: { type: string }
+        email: { type: string }
+        password: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+    LoginRequest:
+      type: object
+      properties:
+        username: { type: string }
+        password: { type: string }
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        username: { type: string }
+        email: { type: string }
+        role: { type: string }
+        expiresIn: { type: integer }
+    ItemRequest:
+      type: object
+      properties:
+        itemCode: { type: string }
+        name: { type: string }
+        categoryId: { type: integer }
+        quantity: { type: integer }
+        minStockLevel: { type: integer }
+    ItemDTO:
+      type: object
+      properties:
+        id: { type: integer }
+        itemCode: { type: string }
+        name: { type: string }
+        quantity: { type: integer }
+        minStockLevel: { type: integer }
+    StockMovementRequest:
+      type: object
+      properties:
+        itemId: { type: integer }
+        movementType: { type: string, enum: [IN, OUT] }
+        quantity: { type: integer }
+        reason: { type: string }

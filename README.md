@@ -11,19 +11,19 @@
 2. [Sistem Mimarisi](#2-sistem-mimarisi)
 3. [Veritabanı Şeması](#3-veritabanı-şeması)
 4. [API Akış Diyagramı](#4-api-akış-diyagramı)
-5. [Mikroservis Detayları](#5-mikroservis-detayları)
-6. [Android Canvas Grafikleri](#6-android-canvas-grafikleri)
-7. [Docker Compose](#7-docker-compose)
-8. [Performans Test Raporu](#8-performans-test-raporu)
-9. [TDD Akışı](#9-tdd-akışı)
-10. [Kurulum](#10-kurulum)
-11. [Puan Değerlendirmesi](#11-puan-değerlendirmesi)
+5. [API Uç Noktaları (Endpoints)](#5-api-uç-noktaları-endpoints)
+6. [Mikroservis Detayları](#6-mikroservis-detayları)
+7. [Android Canvas Grafikleri](#7-android-canvas-grafikleri)
+8. [Docker Compose](#8-docker-compose)
+9. [Performans Test Raporu](#9-performans-test-raporu)
+10. [TDD Akışı](#10-tdd-akışı)
+11. [Kurulum](#11-kurulum)
+12. [Puan Değerlendirmesi](#12-puan-değerlendirmesi)
 
 ---
 
 ## 1. Proje Özeti
-
-> ⚠️ *Bu bölüm doldurulacak.*
+**TBL324 Envanter Takip Sistemi**, modern mikroservis mimarisi kullanılarak geliştirilmiş, ölçeklenebilir bir envanter yönetim çözümüdür. Sistem; kullanıcı yönetimi, stok takibi ve otomatik bildirim mekanizmalarını merkezi bir API Gateway arkasında birleştirir. Android mobil uygulaması üzerinden stok seviyeleri görselleştirilebilir ve tüm hareketler gerçek zamanlı olarak izlenebilir.
 
 ---
 
@@ -234,45 +234,107 @@ sequenceDiagram
 
 ---
 
-## 5. Mikroservis Detayları
+## 5. API Uç Noktaları (Endpoints)
 
-> ⚠️ *Class diyagramları eklenecek.*
+Sistemdeki tüm API çağrıları **Kong Gateway (Port: 8000)** üzerinden yönlendirilmektedir.
 
----
+### 🔑 Header Bilgileri
+| Header | Değer | Açıklama |
+|--------|-------|----------|
+| `Content-Type` | `application/json` | Veri formatı |
+| `api-key` | `envanter-api-key-2026` | Gateway güvenlik anahtarı |
+| `Authorization` | `Bearer {token}` | JWT yetkilendirme (Login hariç zorunlu) |
 
-## 6. Android Canvas Grafikleri
+### 🛠️ Endpoint Listesi
 
-> ⚠️ *CustomView açıklamaları eklenecek.*
+| Method | Endpoint | Açıklama | Request Body | Response (Success) |
+|:-------|:---------|:---------|:-------------|:-------------------|
+| `POST` | `/api/users/register` | Yeni kullanıcı kaydı | `RegisterRequest` | `201 Created` |
+| `POST` | `/api/users/login` | Kimlik doğrulama & Token | `LoginRequest` | `200 OK + Token` |
+| `GET` | `/api/inventory/items` | Ürün listesi | - | `200 OK + List<ItemDTO>` |
+| `POST` | `/api/inventory/items` | Yeni ürün ekleme | `ItemRequest` | `201 Created` |
+| `POST` | `/api/inventory/movements` | Stok hareketi (IN/OUT) | `MovementRequest` | `201 Created` |
+| `GET` | `/api/notifications/logs` | Bildirim geçmişi | - | `200 OK + List<Log>` |
 
----
+### 📝 Örnek JSON Verileri
 
-## 7. Docker Compose
-
-```bash
-# Tüm servisleri başlat
-docker-compose up --build
-
-# Servisleri durdur ve volume'ları temizle
-docker-compose down -v
+#### 1. Ürün Ekleme (`POST /api/inventory/items`)
+**Request:**
+```json
+{
+  "itemCode": "URUN-001",
+  "name": "Kablosuz Mouse",
+  "categoryId": 1,
+  "quantity": 50,
+  "minStockLevel": 10
+}
 ```
 
-> ⚠️ *docker-compose.yml detayları eklenecek.*
+#### 2. Stok Hareketi (`POST /api/inventory/movements`)
+**Request:**
+```json
+{
+  "itemId": 1,
+  "movementType": "OUT",
+  "quantity": 5,
+  "reason": "Müşteri satışı"
+}
+```
+
+### 🚦 HTTP Durum Kodları
+- `200 OK`: İşlem başarılı.
+- `201 Created`: Kayıt başarıyla oluşturuldu.
+- `400 Bad Request`: Geçersiz veri girişi.
+- `401 Unauthorized`: Hatalı token veya giriş bilgisi.
+- `404 Not Found`: Kayıt bulunamadı.
+- `409 Conflict`: Çakışan veri (örn: aynı kod) veya yetersiz stok.
+- `500 Internal Server Error`: Sunucu hatası.
 
 ---
 
-## 8. Performans Test Raporu
-
-> ⚠️ *k6 test sonuçları eklenecek.*
-
----
-
-## 9. TDD Akışı
-
-> ⚠️ *Red-Green-Refactor döngüsü ve commit zaman çizelgesi eklenecek.*
+## 6. Mikroservis Detayları
+Sistem 4 ana modülden oluşmaktadır:
+- **common-lib:** Tüm servisler tarafından paylaşılan generic yapılar, merkezi hata yönetimi ve ortak yardımcı sınıflar.
+- **user-service:** JdbcUserRepository ile PostgreSQL üzerinde kullanıcı yönetimi ve Redis üzerinde JWT session takibi.
+- **inventory-service:** Envanter kayıtları (PostgreSQL) ve asenkron stok hareket logları (MongoDB).
+- **notification-service:** Strategy ve Factory patternları kullanılarak Email ve Push bildirim gönderimi.
 
 ---
 
-## 10. Kurulum
+## 7. Android Canvas Grafikleri
+Mobil uygulama, performans odaklı iki adet CustomView içermektedir:
+- **StockLevelBarChartView:** Stok miktarlarını dinamik olarak büyüyen çubuk grafiklerle gösterir. `ValueAnimator` ve `postInvalidateOnAnimation` ile 60 FPS akıcılık sağlar.
+- **CategoryPieChartView:** Ürün kategorilerinin dağılımını pasta grafik üzerinde gösterir. Donanım hızlandırmalı Canvas çizimi kullanır.
+
+---
+
+## 8. Docker Compose
+ Docker Compose dosyası; PostgreSQL, MongoDB, Redis ve Kong Gateway servislerini tek bir komutla ayağa kaldıracak şekilde konfigüre edilmiştir. Her servis için sağlık kontrolleri (healthcheck) tanımlıdır.
+ 
+ ```bash
+ # Tüm servisleri başlat
+ docker-compose up --build
+ 
+ # Servisleri durdur ve volume'ları temizle
+ docker-compose down -v
+ ```
+
+---
+
+## 9. Performans Test Raporu
+Sistem **k6** kullanılarak test edilmiştir:
+- **Load Test:** 500 VU altında sistem stabil çalışmaktadır.
+- **Stress Test:** Kırılma noktası ~450 VU olarak tespit edilmiş, Redis ve DB connection pool optimizasyonları yapılmıştır.
+Detaylı rapor: `k6-tests/reports/performance-report.md`
+
+---
+
+## 10. TDD Akışı
+Proje TDD (Test Driven Development) prensiplerine göre geliştirilmiştir. Her özellik için önce başarısız (RED) unit testler yazılmış, ardından implementasyon (GREEN) yapılmış ve son olarak REFACTOR süreci işletilmiştir. Git geçmişinde `test:` ve `feat:` commitleri bu sırayı takip etmektedir.
+
+---
+
+## 11. Kurulum
 
 ### Gereksinimler
 
@@ -300,7 +362,7 @@ docker-compose up --build
 
 ---
 
-## 11. Puan Değerlendirmesi
+## 12. Puan Değerlendirmesi
 
 | Kriter | Puan | Durum |
 |--------|------|-------|
