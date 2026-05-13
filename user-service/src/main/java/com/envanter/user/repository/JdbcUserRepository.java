@@ -1,7 +1,7 @@
 package com.envanter.user.repository;
 
-import com.envanter.user.entity.Role;
-import com.envanter.user.entity.User;
+import com.envanter.user.model.Role;
+import com.envanter.user.model.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -23,18 +23,18 @@ public class JdbcUserRepository implements GenericRepository<User, Long> {
     private final RowMapper<User> userRowMapper = new RowMapper<User>() {
         @Override
         public User mapRow(ResultSet rs, int rowNum) throws SQLException {
-            return User.builder()
-                    .id(rs.getLong("id"))
-                    .username(rs.getString("username"))
-                    .email(rs.getString("email"))
-                    .passwordHash(rs.getString("password_hash"))
-                    .firstName(rs.getString("first_name"))
-                    .lastName(rs.getString("last_name"))
-                    .role(Role.valueOf(rs.getString("role")))
-                    .isActive(rs.getBoolean("is_active"))
-                    .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
-                    .updatedAt(rs.getTimestamp("updated_at").toLocalDateTime())
-                    .build();
+            return new User(
+                    rs.getLong("id"),
+                    rs.getString("username"),
+                    rs.getString("email"),
+                    rs.getString("password_hash"),
+                    rs.getString("first_name"),
+                    rs.getString("last_name"),
+                    Role.valueOf(rs.getString("role")),
+                    rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null,
+                    rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null,
+                    rs.getBoolean("is_active")
+            );
         }
     };
 

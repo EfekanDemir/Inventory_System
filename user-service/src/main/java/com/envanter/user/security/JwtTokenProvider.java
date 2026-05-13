@@ -1,6 +1,6 @@
 package com.envanter.user.security;
 
-import com.envanter.user.entity.User;
+import com.envanter.user.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
