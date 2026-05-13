@@ -29,24 +29,63 @@
 
 ## 2. Sistem Mimarisi
 
-### 🌐 Mikroservisler ve Ağ Geçidi İletişimi
-Aşağıdaki diyagram, Android uygulamasından gelen isteklerin Kong Gateway üzerinden mikroservislere ve veritabanlarına nasıl dağıldığını gösterir.
+### 🌐 C4 Container Diyagramı
+Aşağıdaki diyagram, sistemin konteyner mimarisini, kullanıcıların sistemle nasıl etkileşime girdiğini ve mikroservislerin birbirleriyle ve veritabanlarıyla olan ilişkilerini göstermektedir.
 
 ```mermaid
-graph TD
-    A[Android App] -->|API İstekleri| B[Kong Gateway]
-    B -->|/api/users| C[user-service]
-    B -->|/api/inventory| D[inventory-service]
-    B -->|/api/notifications| E[notification-service]
-    
-    C -->|Okuma/Yazma| F[(PostgreSQL)]
-    C -->|Session/Token| G[(Redis)]
-    
-    D -->|Okuma/Yazma| F
-    D -->|Event| E
-    
-    E -->|Log & Uyarı| H[(MongoDB)]
+C4Container
+    title TBL324 Envanter Takip Sistemi - C4 Container Diyagramı
+
+    Person(personel, "Personel", "Sistemi kullanan ve envanter yönetimi yapan çalışan.")
+    Person(yonetici, "Yönetici", "Sistemdeki tüm hareketleri ve logları izleyebilen yönetici.")
+
+    System_Boundary(c1, "Envanter Takip Sistemi") {
+        Container(android_app, "Android App", "Java, Android SDK", "Kullanıcıların sisteme eriştiği mobil uygulama.")
+        Container(kong_gateway, "Kong Gateway", "Kong 3.5", "Tüm API trafiğini yöneten ve servislere dağıtan API Ağ Geçidi.")
+        
+        Container(user_service, "user-service", "Java, Spring Boot", "Kullanıcı kaydı, kimlik doğrulama ve JWT token üretimi.")
+        Container(inventory_service, "inventory-service", "Java, Spring Boot", "Envanter yönetimi, stok takibi ve hareketlerin işlenmesi.")
+        Container(notification_service, "notification-service", "Java, Spring Boot", "Düşük stok bildirimleri, loglama ve raporlama.")
+        
+        ContainerDb(postgres_db, "PostgreSQL", "Relational Database", "Kullanıcı ve envanter/stok verilerinin tutulduğu ana veritabanı.")
+        ContainerDb(mongodb_db, "MongoDB", "NoSQL Database", "Stok hareketleri, sistem logları ve bildirimlerin tutulduğu veritabanı.")
+        ContainerDb(redis_cache, "Redis", "In-Memory Cache", "Session yönetimi ve performans artışı için önbellekleme.")
+    }
+
+    Rel(personel, android_app, "Kullanır", "HTTPS/JSON")
+    Rel(yonetici, android_app, "Kullanır", "HTTPS/JSON")
+
+    Rel(android_app, kong_gateway, "API İstekleri yapar", "HTTPS/JSON")
+
+    Rel(kong_gateway, user_service, "İletir", "HTTP/JSON")
+    Rel(kong_gateway, inventory_service, "İletir", "HTTP/JSON")
+    Rel(kong_gateway, notification_service, "İletir", "HTTP/JSON")
+
+    Rel(inventory_service, notification_service, "Bildirim gönderir", "HTTP/JSON")
+    Rel(inventory_service, user_service, "Kullanıcı doğrular", "HTTP/JSON")
+
+    Rel(user_service, postgres_db, "Okur/Yazar", "JDBC")
+    Rel(user_service, redis_cache, "Oturum açar/Token saklar", "Redis Protocol")
+
+    Rel(inventory_service, postgres_db, "Okur/Yazar", "JDBC")
+    Rel(inventory_service, mongodb_db, "Log yazar", "MongoDB Protocol")
+
+    Rel(notification_service, mongodb_db, "Bildirim/Log okur ve yazar", "MongoDB Protocol")
+
+    UpdateElementStyle(android_app, $bgColor="#E6A822", $fontColor="#FFFFFF")
+    UpdateElementStyle(kong_gateway, $bgColor="#E6399B", $fontColor="#FFFFFF")
+    UpdateElementStyle(user_service, $bgColor="#2B78E4", $fontColor="#FFFFFF")
+    UpdateElementStyle(inventory_service, $bgColor="#2B78E4", $fontColor="#FFFFFF")
+    UpdateElementStyle(notification_service, $bgColor="#2B78E4", $fontColor="#FFFFFF")
+    UpdateElementStyle(postgres_db, $bgColor="#34A853", $fontColor="#FFFFFF")
+    UpdateElementStyle(mongodb_db, $bgColor="#34A853", $fontColor="#FFFFFF")
+    UpdateElementStyle(redis_cache, $bgColor="#34A853", $fontColor="#FFFFFF")
 ```
+
+### 🧩 Bileşen Açıklamaları
+- **user-service:** Kullanıcı kimlik doğrulama, JWT token üretimi ve yetkilendirme işlemlerini gerçekleştirir. Session verilerini Redis üzerinde tutar.
+- **inventory-service:** Envanter yönetimi, stok takibi ve hareketlerin işlenmesini sağlar. Kritik stok seviyelerinde bildirim servisini asenkron olarak tetikler.
+- **notification-service:** Düşük stok bildirimleri gibi sistem uyarılarını işler, raporlama yapar ve aktivite loglarını MongoDB üzerinde saklar.
 
 ---
 
