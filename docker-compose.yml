@@ -1,15 +1,16 @@
 version: '3.8'
 
-# =============================================
-# TBL324 Envanter Takip Sistemi – Docker Compose
+# =====================================================================
+# TBL324 Envanter Takip Sistemi — docker-compose FINAL
 # PostgreSQL 15 | MongoDB 6 | Redis 7
-# Kong 3.5 (DB-less) | Spring Boot Microservices
+# Kong 3.5 (DB-less) | Spring Boot Microservices (Java 21)
 # Network: envanter-network (bridge)
-# =============================================
+# Loglar: stdout (Docker log driver)
+# =====================================================================
 
 services:
 
-  # ── PostgreSQL 15 ─────────────────────────────────────────
+  # ── PostgreSQL 15 ──────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: envanter-postgres
@@ -32,7 +33,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # ── MongoDB 6 ─────────────────────────────────────────────
+  # ── MongoDB 6 ──────────────────────────────────────────────────────
   mongodb:
     image: mongo:6-jammy
     container_name: envanter-mongodb
@@ -54,7 +55,7 @@ services:
       retries: 5
       start_period: 30s
 
-  # ── Redis 7 ───────────────────────────────────────────────
+  # ── Redis 7 ────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: envanter-redis
@@ -78,30 +79,48 @@ services:
       retries: 5
       start_period: 10s
 
-  # ── user-service ──────────────────────────────────────────
+  # ── Mailhog (Test SMTP) ────────────────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: envanter-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI → http://localhost:8025
+    networks:
+      - envanter-network
+
+  # ── user-service ───────────────────────────────────────────────────
   user-service:
     build:
       context: ./user-service
       dockerfile: Dockerfile
+    image: envanter/user-service:latest
     container_name: envanter-user-service
     restart: unless-stopped
     environment:
+      # PostgreSQL
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/envanter_db
       SPRING_DATASOURCE_USERNAME: envanter_user
       SPRING_DATASOURCE_PASSWORD: envanter_pass
-      SPRING_DATA_MONGODB_URI: mongodb://envanter_admin:envanter_pass@mongodb:27017/envanter_logs?authSource=admin
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: envanter_redis_pass
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      # Redis session
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: envanter_redis_pass
+      # Actuator
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      # Server
       SERVER_PORT: 8081
+      # Loglar stdout'a
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     ports:
       - "8081:8081"
     networks:
       - envanter-network
     depends_on:
       postgres:
-        condition: service_healthy
-      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -110,24 +129,36 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
-  # ── inventory-service ─────────────────────────────────────
+  # ── inventory-service ──────────────────────────────────────────────
   inventory-service:
     build:
       context: ./inventory-service
       dockerfile: Dockerfile
+    image: envanter/inventory-service:latest
     container_name: envanter-inventory-service
     restart: unless-stopped
     environment:
+      # PostgreSQL
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/envanter_db
       SPRING_DATASOURCE_USERNAME: envanter_user
       SPRING_DATASOURCE_PASSWORD: envanter_pass
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      # MongoDB (stok log)
       SPRING_DATA_MONGODB_URI: mongodb://envanter_admin:envanter_pass@mongodb:27017/envanter_logs?authSource=admin
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: envanter_redis_pass
+      # Servisler arası iletişim
+      NOTIFICATION_SERVICE_URL: http://notification-service:8083
+      USER_SERVICE_URL: http://user-service:8081
+      # HTTP client timeout
+      HTTP_CLIENT_CONNECT_TIMEOUT_MS: 5000
+      HTTP_CLIENT_READ_TIMEOUT_MS: 10000
+      # Actuator
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      # Server
       SERVER_PORT: 8082
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     ports:
       - "8082:8082"
     networks:
@@ -137,31 +168,37 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
-  # ── notification-service ──────────────────────────────────
+  # ── notification-service ───────────────────────────────────────────
   notification-service:
     build:
       context: ./notification-service
       dockerfile: Dockerfile
+    image: envanter/notification-service:latest
     container_name: envanter-notification-service
     restart: unless-stopped
     environment:
+      # MongoDB (bildirim log)
       SPRING_DATA_MONGODB_URI: mongodb://envanter_admin:envanter_pass@mongodb:27017/envanter_logs?authSource=admin
+      # Mail (Mailhog test SMTP)
       SPRING_MAIL_HOST: mailhog
       SPRING_MAIL_PORT: 1025
       SPRING_MAIL_USERNAME: ""
       SPRING_MAIL_PASSWORD: ""
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
+      # Actuator
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      # Server
       SERVER_PORT: 8083
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     ports:
       - "8083:8083"
     networks:
@@ -174,20 +211,9 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
-  # ── Mailhog (Test SMTP) ───────────────────────────────────
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: envanter-mailhog
-    restart: unless-stopped
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # Web UI
-    networks:
-      - envanter-network
-
-  # ── Kong Gateway 3.5 (DB-less) ────────────────────────────
+  # ── Kong Gateway 3.5 (DB-less) ────────────────────────────────────
   kong:
     image: kong:3.5-alpine
     container_name: envanter-kong
@@ -202,7 +228,7 @@ services:
       KONG_ADMIN_LISTEN: "0.0.0.0:8001"
       KONG_PROXY_LISTEN: "0.0.0.0:8000"
     ports:
-      - "8000:8000"   # Kong Proxy (tüm API trafiği)
+      - "8000:8000"   # Kong Proxy — tüm API trafiği buradan
       - "8001:8001"   # Kong Admin API
     volumes:
       - ./kong-config:/kong/declarative
@@ -222,7 +248,7 @@ services:
       retries: 5
       start_period: 30s
 
-# ── Volumes ───────────────────────────────────────────────
+# ── Volumes ──────────────────────────────────────────────────────────
 volumes:
   postgres_data:
     driver: local
@@ -231,7 +257,7 @@ volumes:
   redis_data:
     driver: local
 
-# ── Networks ──────────────────────────────────────────────
+# ── Networks ─────────────────────────────────────────────────────────
 networks:
   envanter-network:
     driver: bridge
