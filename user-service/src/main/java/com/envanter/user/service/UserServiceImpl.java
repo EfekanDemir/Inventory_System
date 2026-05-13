@@ -4,58 +4,147 @@ import com.envanter.user.dto.LoginRequest;
 import com.envanter.user.dto.LoginResponse;
 import com.envanter.user.dto.RegisterRequest;
 import com.envanter.user.dto.UserDTO;
+import com.envanter.user.exception.ConflictException;
+import com.envanter.user.exception.UnauthorizedException;
+import com.envanter.user.model.User;
 import com.envanter.user.repository.UserRepository;
 import com.envanter.user.security.JwtTokenProvider;
 import com.envanter.user.security.RedisSessionService;
+import com.envanter.user.util.UserMapper;
+import com.envanter.user.util.UserValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 /**
- * UserService implementasyonu.
+ * UserService implementasyonu — SRP refactor sonrası GREEN asama.
  *
- * ⚠️ TDD RED AŞAMASI ⚠️
- * Bu sınıf kasıtlı olarak BOŞTUR — implementasyon henüz yapılmamıştır.
- * UserServiceTest'teki testler bu yüzden BAŞARISIZ (RED) olacaktır.
- * Implementasyon bir sonraki commit'te (GREEN) eklenecektir.
+ * <p>Bu sınıfın TEK sorumluluğu: iş akışını orkestre etmek.</p>
+ * <ul>
+ *   <li>Doğrulama  → {@link UserValidator} (ayrı sınıf)</li>
+ *   <li>Mapping    → {@link UserMapper}    (ayrı sınıf)</li>
+ *   <li>JWT token  → {@link JwtTokenProvider} (ayrı sınıf)</li>
+ *   <li>Oturum     → {@link RedisSessionService} (ayrı sınıf)</li>
+ * </ul>
  *
- * SOLID: Constructor Injection zorunlu (@Autowired field injection yasak).
+ * SOLID: Constructor Injection zorunlu — @Autowired field injection yasak.
  */
+@Service
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final RedisSessionService redisSessionService;
+    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
-    // PasswordEncoder Spring Security'den gelir; interface olarak tanımlandı
-    private final PasswordEncoderPort passwordEncoder;
+    private final UserRepository       userRepository;
+    private final JwtTokenProvider     jwtTokenProvider;
+    private final RedisSessionService  redisSessionService;
+    private final UserValidator        userValidator;
+    private final UserMapper           userMapper;
+    private final PasswordEncoderPort  passwordEncoder;
 
     public UserServiceImpl(UserRepository userRepository,
                            JwtTokenProvider jwtTokenProvider,
                            RedisSessionService redisSessionService,
+                           UserValidator userValidator,
+                           UserMapper userMapper,
                            PasswordEncoderPort passwordEncoder) {
-        this.userRepository = userRepository;
-        this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository     = userRepository;
+        this.jwtTokenProvider   = jwtTokenProvider;
         this.redisSessionService = redisSessionService;
-        this.passwordEncoder = passwordEncoder;
+        this.userValidator      = userValidator;
+        this.userMapper         = userMapper;
+        this.passwordEncoder    = passwordEncoder;
     }
 
-    /**
-     * ⚠️ RED: Henüz implemente edilmedi.
-     * Bu metot UnsupportedOperationException fırlatır → register testleri BAŞARISIZ olacak.
-     */
+    // -------------------------------------------------------------------------
+    // UserService impl
+    // -------------------------------------------------------------------------
+
     @Override
     public UserDTO register(RegisterRequest request) {
-        // TODO: implement in GREEN phase
-        throw new UnsupportedOperationException("register() henüz implemente edilmedi — RED aşaması");
+        // 1) Doğrulama — UserValidator'a delege edildi (SRP)
+        userValidator.validateRegisterRequest(request);
+
+        // 2) Tekil kullanıcı adı / e-posta kontrolü
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new ConflictException(
+                    "Bu kullanıcı adı zaten kullanılıyor: " + request.getUsername());
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException(
+                    "Bu e-posta zaten kayıtlı: " + request.getEmail());
+        }
+
+        // 3) Şifre hashleme
+        String hashed = passwordEncoder.encode(request.getPassword());
+
+        // 4) Mapping — UserMapper'a delege edildi (SRP)
+        User user = userMapper.toEntity(request, hashed);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+
+        // 5) Kaydet
+        User saved = userRepository.save(user);
+        log.info("Yeni kullanıcı kaydedildi: id={}, username={}", saved.getId(), saved.getUsername());
+
+        return userMapper.toDTO(saved);
     }
 
-    /**
-     * ⚠️ RED: Henüz implemente edilmedi.
-     * Bu metot UnsupportedOperationException fırlatır → login testleri BAŞARISIZ olacak.
-     */
     @Override
     public LoginResponse login(LoginRequest request) {
-        // TODO: implement in GREEN phase
-        throw new UnsupportedOperationException("login() henüz implemente edilmedi — RED aşaması");
+        // 1) Kullanıcıyı bul
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new UnauthorizedException(
+                        "Kullanıcı adı veya şifre hatalı."));
+
+        // 2) Aktif mi?
+        if (!user.isActive()) {
+            throw new UnauthorizedException("Hesap devre dışı bırakılmış.");
+        }
+
+        // 3) Şifre doğrulama
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new UnauthorizedException("Kullanıcı adı veya şifre hatalı.");
+        }
+
+        // 4) JWT token üretimi — JwtTokenProvider'a delege edildi (SRP)
+        // JwtTokenProvider kendi entity'ini bekliyor; model User'ı dönüştürüyoruz
+        String token = generateTokenForUser(user);
+
+        // 5) Redis'e oturum kaydet — RedisSessionService'e delege edildi (SRP)
+        redisSessionService.createSession(String.valueOf(user.getId()), token);
+
+        log.info("Kullanıcı giriş yaptı: username={}", user.getUsername());
+
+        return new LoginResponse(
+                token,
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole().name(),
+                86400L   // 24 saat (JwtTokenProvider default'u ile tutarlı)
+        );
     }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * model.User → JwtTokenProvider uyumlu token üretimi.
+     * JwtTokenProvider kendi entity.User sınıfını kullanıyor;
+     * bu köprü metodu iki modeli birbirinden izole eder.
+     */
+    private String generateTokenForUser(User user) {
+        com.envanter.user.entity.User jwtUser = new com.envanter.user.entity.User();
+        jwtUser.setId(user.getId());
+        jwtUser.setRole(com.envanter.user.entity.Role.valueOf(user.getRole().name()));
+        return jwtTokenProvider.generateToken(jwtUser);
+    }
+
+    // -------------------------------------------------------------------------
+    // PasswordEncoderPort (iç arayüz — Spring Security'yi sarmalar)
+    // -------------------------------------------------------------------------
 
     /**
      * Spring Security PasswordEncoder'ı sarmalar.
