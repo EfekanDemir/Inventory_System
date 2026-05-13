@@ -1,5 +1,6 @@
 package com.envanter.mobile.view;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -7,6 +8,7 @@ import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
 
 import com.envanter.mobile.model.ItemStock;
 
@@ -28,6 +30,8 @@ public class StockLevelBarChartView extends View {
     private final int COLOR_ORANGE = Color.parseColor("#FF9800");
     private final int COLOR_RED = Color.parseColor("#F44336");
 
+    private float animationProgress = 0f;
+
     public StockLevelBarChartView(Context context) {
         super(context);
         init();
@@ -39,6 +43,7 @@ public class StockLevelBarChartView extends View {
     }
 
     private void init() {
+        // Paint nesneleri onDraw icinde kesinlikle new ile uretilmemelidir, burada initialize edilir.
         barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         barPaint.setStyle(Paint.Style.FILL);
 
@@ -65,7 +70,18 @@ public class StockLevelBarChartView extends View {
 
     public void setItems(List<ItemStock> items) {
         this.items = items;
-        invalidate(); // View'in yeniden onDraw cagirmasini tetikler
+        startAnimation();
+    }
+
+    private void startAnimation() {
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(800); // 800ms
+        animator.setInterpolator(new AccelerateDecelerateInterpolator());
+        animator.addUpdateListener(animation -> {
+            animationProgress = (float) animation.getAnimatedValue();
+            postInvalidateOnAnimation(); // Animasyonlu cizim tetikleyicisi (Performans dostu)
+        });
+        animator.start();
     }
 
     @Override
@@ -102,7 +118,7 @@ public class StockLevelBarChartView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
+        super.onDraw(canvas); // onDraw icinde "new" kullanimi yapilmamistir (Optimization)
 
         if (items == null || items.isEmpty()) return;
 
@@ -150,9 +166,9 @@ public class StockLevelBarChartView extends View {
             float right = left + barWidth;
             float bottom = height - paddingBottom;
             
-            // Stok miktarinin boyu
+            // Stok miktarinin boyu (Animasyonla yukselir)
             float ratio = (float) item.getQuantity() / maxQuantity;
-            float top = bottom - (graphHeight * ratio);
+            float top = bottom - (graphHeight * ratio * animationProgress);
 
             // Bar'i ciz
             canvas.drawRect(left, top, right, bottom, barPaint);
@@ -166,10 +182,11 @@ public class StockLevelBarChartView extends View {
             textPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText(item.getItemName(), left + (barWidth / 2), bottom + 50f, textPaint);
 
-            // Miktar cizimi (Barin ustune)
-            canvas.drawText(String.valueOf(item.getQuantity()), left + (barWidth / 2), top - 20f, textPaint);
+            // Miktar cizimi (Barin ustune) - Animasyon oraninda artan sayi
+            int currentQty = Math.round(item.getQuantity() * animationProgress);
+            canvas.drawText(String.valueOf(currentQty), left + (barWidth / 2), top - 20f, textPaint);
 
-            // Min Stok Seviyesi Kesikli Cizgi (Her barin uzerine ozel ciziliyor)
+            // Min Stok Seviyesi Kesikli Cizgi
             float minRatio = (float) item.getMinStockLevel() / maxQuantity;
             float minTop = bottom - (graphHeight * minRatio);
             canvas.drawLine(left - 20f, minTop, right + 20f, minTop, minStockLinePaint);

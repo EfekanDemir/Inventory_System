@@ -1,5 +1,6 @@
 package com.envanter.mobile.view;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -7,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
 
 public class CategoryPieChartView extends View {
 
@@ -14,7 +16,7 @@ public class CategoryPieChartView extends View {
     private String[] categoryNames = new String[0];
     
     // 6 renkli palet
-    private int[] colors = {
+    private final int[] colors = {
         Color.parseColor("#2196F3"), // Mavi
         Color.parseColor("#4CAF50"), // Yesil
         Color.parseColor("#FF9800"), // Turuncu
@@ -26,7 +28,9 @@ public class CategoryPieChartView extends View {
     private Paint slicePaint;
     private Paint textPaint;
     private Paint legendPaint;
-    private RectF pieBounds;
+    private RectF pieBounds; // onDraw disinda create edildi
+    
+    private float animationProgress = 0f;
 
     public CategoryPieChartView(Context context) {
         super(context);
@@ -52,7 +56,7 @@ public class CategoryPieChartView extends View {
         // Alttaki aciklama yazilari (Legend)
         legendPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         legendPaint.setColor(Color.BLACK);
-        legendPaint.setTextSize(20f); // Istenen yazi boyutu
+        legendPaint.setTextSize(20f);
 
         pieBounds = new RectF();
     }
@@ -60,7 +64,18 @@ public class CategoryPieChartView extends View {
     public void setData(float[] percentages, String[] categoryNames) {
         this.percentages = percentages;
         this.categoryNames = categoryNames;
-        invalidate(); // Degisiklik sonrasi yeniden ciz
+        startAnimation();
+    }
+
+    private void startAnimation() {
+        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(800); // 800ms
+        animator.setInterpolator(new AccelerateDecelerateInterpolator());
+        animator.addUpdateListener(animation -> {
+            animationProgress = (float) animation.getAnimatedValue();
+            postInvalidateOnAnimation(); // Donanim hizlandirmali, daha performansli tetikleyici
+        });
+        animator.start();
     }
 
     @Override
@@ -74,6 +89,18 @@ public class CategoryPieChartView extends View {
     }
 
     @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        
+        // RectF bounds onDraw yerine onSizeChanged icinde hesaplanir
+        float radius = Math.min(w, h) / 3f; 
+        float centerX = w / 2f;
+        float centerY = (h / 2f) - 100f; // Legend icin altta bosluk birak
+        
+        pieBounds.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         
@@ -82,44 +109,41 @@ public class CategoryPieChartView extends View {
         int width = getWidth();
         int height = getHeight();
 
-        // Pasta grafik cemberinin yariçapi
-        float radius = Math.min(width, height) / 3f; 
-        float centerX = width / 2f;
-        float centerY = (height / 2f) - 100f; // Legend icin altta bosluk birak
-
-        // Cizim sinirlari (RectF bounds)
-        pieBounds.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+        float radius = pieBounds.width() / 2f;
+        float centerX = pieBounds.centerX();
+        float centerY = pieBounds.centerY();
 
         float currentAngle = 0f; // 0 derece, saat 3 yonunden baslar
 
         for (int i = 0; i < percentages.length; i++) {
-            float sweepAngle = (percentages[i] / 100f) * 360f;
+            float totalSweepAngle = (percentages[i] / 100f) * 360f;
+            float animatedSweepAngle = totalSweepAngle * animationProgress;
+            
             slicePaint.setColor(colors[i % colors.length]);
 
-            // Dilimi ciz (useCenter: true)
-            canvas.drawArc(pieBounds, currentAngle, sweepAngle, true, slicePaint);
+            // Dilimi ciz
+            canvas.drawArc(pieBounds, currentAngle, animatedSweepAngle, true, slicePaint);
 
             // Yuzde etiketini ciz (Dilimin yari yolunda)
-            float textAngle = currentAngle + (sweepAngle / 2f);
+            float textAngle = currentAngle + (totalSweepAngle / 2f);
             float x = (float) (centerX + (radius * 0.6) * Math.cos(Math.toRadians(textAngle)));
             float y = (float) (centerY + (radius * 0.6) * Math.sin(Math.toRadians(textAngle)));
 
-            // Eger dilim cok kucukse icine text yazma (orn. <%3)
-            if (percentages[i] > 3f) {
+            // Eger dilim cok kucukse icine text yazma, ve yazi sadece animasyon yarisini gectikten sonra belirmeye baslasin
+            if (percentages[i] > 3f && animationProgress > 0.5f) {
                 String text = String.format("%.1f%%", percentages[i]);
-                // Metni dikeyde ortalamak icin ufak bir ofset ekledim (y+12f)
                 canvas.drawText(text, x, y + 12f, textPaint);
             }
 
-            currentAngle += sweepAngle;
+            currentAngle += totalSweepAngle; // Siradaki dilimin baslangici icin her zaman tam aci kadar kaydir
         }
-
-        // Alttaki aciklamalari (Legend) ciz
+        
+        // Ekrana Legend basma
         drawLegend(canvas, width, height, radius, centerY);
     }
 
     private void drawLegend(Canvas canvas, int width, int height, float radius, float centerY) {
-        float legendStartY = centerY + radius + 60f; // Pastanin hemen alti
+        float legendStartY = centerY + radius + 60f; 
         float legendStartX = 50f;
         
         float currentX = legendStartX;
@@ -127,21 +151,17 @@ public class CategoryPieChartView extends View {
         
         float squareSize = 30f;
         float textOffset = 15f;
-        float columnSpacing = (width - 100f) / 2f; // Ekrani 2 kolona bol
+        float columnSpacing = (width - 100f) / 2f; 
         float rowSpacing = 60f;
 
         for (int i = 0; i < percentages.length; i++) {
-            // Renk karesini ciz
             slicePaint.setColor(colors[i % colors.length]);
             canvas.drawRect(currentX, currentY - squareSize, currentX + squareSize, currentY, slicePaint);
 
-            // Kategori ismini ciz
-            // Yazi dikeyde kareyle hizalansin diye ufak ayar
             canvas.drawText(categoryNames[i], currentX + squareSize + textOffset, currentY - 5f, legendPaint);
 
             currentX += columnSpacing;
 
-            // Sag sinira dayandiysa alt satira gec
             if (currentX + columnSpacing > width + 10f) {
                 currentX = legendStartX;
                 currentY += rowSpacing;
