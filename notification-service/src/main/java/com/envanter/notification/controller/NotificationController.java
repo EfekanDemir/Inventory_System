@@ -80,6 +80,19 @@ public class NotificationController {
     }
 
     /**
+     * Envanter eklendi bildirimi — inventory-service tarafından tetiklenir.
+     * POST /api/notifications/inventory-added
+     */
+    @PostMapping("/inventory-added")
+    public ResponseEntity<Void> sendInventoryAddedNotification(
+            @RequestBody com.envanter.notification.dto.NotificationRequest request) {
+        log.info("Envanter eklendi bildirimi: itemId={}",
+                request.getRelatedItemId());
+        notificationService.sendNotification(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    /**
      * Servis sağlık kontrolü.
      * GET /api/notifications/health
      */

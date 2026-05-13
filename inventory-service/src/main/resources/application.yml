@@ -10,3 +10,17 @@ spring:
   data:
     mongodb:
       uri: mongodb://envanter_admin:envanter_pass@localhost:27017/envanter_logs?authSource=admin
+
+# ── Servisler arası iletişim ──────────────────────────────
+notification:
+  service:
+    url: http://notification-service:8083   # docker-compose host
+user:
+  service:
+    url: http://user-service:8081           # docker-compose host
+
+# ── HTTP Client Timeout ───────────────────────────────────
+http:
+  client:
+    connect-timeout-ms: 5000   # 5 saniye bağlantı zaman aşımı
+    read-timeout-ms: 10000     # 10 saniye okuma zaman aşımı
