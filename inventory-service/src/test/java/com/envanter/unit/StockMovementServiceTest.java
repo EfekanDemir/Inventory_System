@@ -10,7 +10,7 @@ import com.envanter.inventory.model.MovementType;
 import com.envanter.inventory.repository.ItemRepository;
 import com.envanter.inventory.repository.StockMovementRepository;
 import com.envanter.inventory.service.StockMovementServiceImpl;
-import com.envanter.user.exception.ConflictException;
+import com.envanter.inventory.exception.ConflictException;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

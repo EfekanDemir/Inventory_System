@@ -1,5 +1,6 @@
 package com.envanter.inventory.controller;
 
+import com.envanter.common.generic.GenericResponseWrapper;
 import com.envanter.inventory.dto.StockMovementDTO;
 import com.envanter.inventory.dto.StockMovementRequest;
 import com.envanter.inventory.service.StockMovementService;
@@ -44,17 +45,17 @@ public class StockMovementController {
     // -------------------------------------------------------------------------
 
     @PostMapping("/movements")
-    public ResponseEntity<StockMovementDTO> createMovement(
+    public ResponseEntity<GenericResponseWrapper<StockMovementDTO>> createMovement(
             @RequestBody StockMovementRequest request) {
         log.info("Stok hareketi isteği: itemId={}, type={}, qty={}",
                 request.getItemId(), request.getMovementType(), request.getQuantity());
         StockMovementDTO created = stockMovementService.createMovement(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(GenericResponseWrapper.success(created));
     }
 
     @GetMapping("/movements/item/{itemId}")
-    public ResponseEntity<List<StockMovementDTO>> getMovementsByItem(
+    public ResponseEntity<GenericResponseWrapper<List<StockMovementDTO>>> getMovementsByItem(
             @PathVariable Long itemId) {
-        return ResponseEntity.ok(stockMovementService.getMovementsByItem(itemId));
+        return ResponseEntity.ok(GenericResponseWrapper.success(stockMovementService.getMovementsByItem(itemId)));
     }
 }

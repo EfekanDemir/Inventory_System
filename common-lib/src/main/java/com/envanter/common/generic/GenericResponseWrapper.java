@@ -1,6 +1,7 @@
 package com.envanter.common.generic;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Tüm mikroservis API yanıtlarını saran genel sarmalayıcı.
@@ -15,7 +16,7 @@ public final class GenericResponseWrapper<T> {
 
     private final T data;
     private final String message;
-    private final LocalDateTime timestamp;
+    private final String timestamp;
     private final boolean success;
 
     // -- Constructor (private -- static factory ile olusturulur) ---------------
@@ -24,7 +25,7 @@ public final class GenericResponseWrapper<T> {
         this.data      = data;
         this.message   = message;
         this.success   = success;
-        this.timestamp = LocalDateTime.now();
+        this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
     }
 
     // -- Static Factory Methods ------------------------------------------------
@@ -86,7 +87,7 @@ public final class GenericResponseWrapper<T> {
 
     public T getData()                { return data;      }
     public String getMessage()        { return message;   }
-    public LocalDateTime getTimestamp() { return timestamp; }
+    public String getTimestamp()      { return timestamp; }
     public boolean isSuccess()        { return success;   }
 
     @Override
@@ -94,7 +95,7 @@ public final class GenericResponseWrapper<T> {
         return "GenericResponseWrapper{"
                 + "success=" + success
                 + ", message='" + message + '\''
-                + ", timestamp=" + timestamp
+                + ", timestamp='" + timestamp + '\''
                 + ", data=" + data
                 + '}';
     }

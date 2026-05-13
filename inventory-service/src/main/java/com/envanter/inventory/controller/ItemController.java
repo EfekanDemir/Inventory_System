@@ -1,5 +1,6 @@
 package com.envanter.inventory.controller;
 
+import com.envanter.common.generic.GenericResponseWrapper;
 import com.envanter.inventory.dto.ItemDTO;
 import com.envanter.inventory.dto.ItemRequest;
 import com.envanter.inventory.service.ItemService;
@@ -51,27 +52,27 @@ public class ItemController {
     // -------------------------------------------------------------------------
 
     @GetMapping("/items")
-    public ResponseEntity<List<ItemDTO>> getAllItems() {
-        return ResponseEntity.ok(itemService.getAllItems());
+    public ResponseEntity<GenericResponseWrapper<List<ItemDTO>>> getAllItems() {
+        return ResponseEntity.ok(GenericResponseWrapper.success(itemService.getAllItems()));
     }
 
     @GetMapping("/items/{id}")
-    public ResponseEntity<ItemDTO> getItemById(@PathVariable Long id) {
-        return ResponseEntity.ok(itemService.getItemById(id));
+    public ResponseEntity<GenericResponseWrapper<ItemDTO>> getItemById(@PathVariable Long id) {
+        return ResponseEntity.ok(GenericResponseWrapper.success(itemService.getItemById(id)));
     }
 
     @PostMapping("/items")
-    public ResponseEntity<ItemDTO> createItem(@RequestBody ItemRequest request) {
+    public ResponseEntity<GenericResponseWrapper<ItemDTO>> createItem(@RequestBody ItemRequest request) {
         log.info("Yeni item isteği: code={}", request.getItemCode());
         ItemDTO created = itemService.createItem(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(GenericResponseWrapper.success(created));
     }
 
     @PutMapping("/items/{id}")
-    public ResponseEntity<ItemDTO> updateItem(@PathVariable Long id,
+    public ResponseEntity<GenericResponseWrapper<ItemDTO>> updateItem(@PathVariable Long id,
                                               @RequestBody ItemRequest request) {
         log.info("Item güncelleme isteği: id={}", id);
-        return ResponseEntity.ok(itemService.updateItem(id, request));
+        return ResponseEntity.ok(GenericResponseWrapper.success(itemService.updateItem(id, request)));
     }
 
     @DeleteMapping("/items/{id}")

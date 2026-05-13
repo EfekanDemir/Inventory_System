@@ -9,14 +9,15 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
-# Bağımlılıkları önce indir (layer cache'i korumak için)
+# Önce parent pom ve common-lib'i kopyala
 COPY pom.xml .
-COPY ../pom.xml ../pom.xml
-RUN mvn dependency:go-offline -q --no-transfer-progress || true
+COPY common-lib ./common-lib
+COPY user-service ./user-service
+COPY inventory-service ./inventory-service
+COPY notification-service ./notification-service
 
-# Kaynak kodu kopyala ve derle
-COPY src ./src
-RUN mvn package -DskipTests -q --no-transfer-progress
+# Tüm projeyi derle (sadece user-service ve bağımlılıkları)
+RUN mvn clean package -pl user-service -am -DskipTests --no-transfer-progress
 
 # --- Stage 2: Runtime ---------------------------------------------
 FROM eclipse-temurin:21-jre-alpine AS runtime
@@ -27,7 +28,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 # JAR dosyasını builder stage'den al
-COPY --from=builder /build/target/*.jar app.jar
+COPY --from=builder /build/user-service/target/*.jar app.jar
 
 # Spring Boot aktüatör portu
 EXPOSE 8081

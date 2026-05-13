@@ -12,8 +12,15 @@ public class ApiErrorHandler {
     public static void handleError(Context context, int statusCode) {
         switch (statusCode) {
             case 401:
-                Toast.makeText(context, "Oturum süresi doldu. Lütfen tekrar giriş yapın.", Toast.LENGTH_LONG).show();
-                logout(context);
+                if (context instanceof LoginActivity) {
+                    Toast.makeText(context, "Kullanıcı adı veya şifre hatalı.", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(context, "Oturum süresi doldu. Lütfen tekrar giriş yapın.", Toast.LENGTH_LONG).show();
+                    logout(context);
+                }
+                break;
+            case 403:
+                Toast.makeText(context, "Bu işlem için yetkiniz yok (403).", Toast.LENGTH_SHORT).show();
                 break;
             case 404:
                 Toast.makeText(context, "Kayıt bulunamadı (404).", Toast.LENGTH_SHORT).show();
@@ -31,11 +38,9 @@ public class ApiErrorHandler {
     }
 
     public static void logout(Context context) {
-        // Token'i temizle
         SharedPreferences prefs = context.getSharedPreferences("envanter_prefs", Context.MODE_PRIVATE);
         prefs.edit().remove("jwt_token").apply();
 
-        // Login ekranina yonlendir ve backstack'i temizle
         Intent intent = new Intent(context, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         context.startActivity(intent);

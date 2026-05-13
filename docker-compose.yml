@@ -20,7 +20,7 @@ services:
       POSTGRES_USER: envanter_user
       POSTGRES_PASSWORD: envanter_pass
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
@@ -28,10 +28,10 @@ services:
       - envanter-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U envanter_user -d envanter_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # ── MongoDB 6 ──────────────────────────────────────────────────────
   mongodb:
@@ -43,16 +43,16 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: envanter_pass
       MONGO_INITDB_DATABASE: envanter_logs
     ports:
-      - "27017:27017"
+      - "30017:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
       - envanter-network
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 10s
+      retries: 10
       start_period: 30s
 
   # ── Redis 7 ────────────────────────────────────────────────────────
@@ -67,17 +67,17 @@ services:
       --maxmemory-policy allkeys-lru
       --requirepass envanter_redis_pass
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
       - envanter-network
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "envanter_redis_pass", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # ── Mailhog (Test SMTP) ────────────────────────────────────────────
   mailhog:
@@ -93,8 +93,8 @@ services:
   # ── user-service ───────────────────────────────────────────────────
   user-service:
     build:
-      context: ./user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./user-service/Dockerfile
     image: envanter/user-service:latest
     container_name: envanter-user-service
     restart: unless-stopped
@@ -134,8 +134,8 @@ services:
   # ── inventory-service ──────────────────────────────────────────────
   inventory-service:
     build:
-      context: ./inventory-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./inventory-service/Dockerfile
     image: envanter/inventory-service:latest
     container_name: envanter-inventory-service
     restart: unless-stopped
@@ -178,8 +178,8 @@ services:
   # ── notification-service ───────────────────────────────────────────
   notification-service:
     build:
-      context: ./notification-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./notification-service/Dockerfile
     image: envanter/notification-service:latest
     container_name: envanter-notification-service
     restart: unless-stopped
@@ -215,7 +215,7 @@ services:
 
   # ── Kong Gateway 3.5 (DB-less) ────────────────────────────────────
   kong:
-    image: kong:3.5-alpine
+    image: kong:3.5
     container_name: envanter-kong
     restart: unless-stopped
     environment:

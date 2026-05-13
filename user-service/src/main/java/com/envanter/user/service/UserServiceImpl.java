@@ -6,6 +6,7 @@ import com.envanter.user.dto.RegisterRequest;
 import com.envanter.user.dto.UserDTO;
 import com.envanter.user.exception.ConflictException;
 import com.envanter.user.exception.UnauthorizedException;
+import com.envanter.user.model.Role;
 import com.envanter.user.model.User;
 import com.envanter.user.repository.UserRepository;
 import com.envanter.user.security.JwtTokenProvider;
@@ -17,16 +18,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 
 /**
  * UserService implementasyonu — SRP refactor sonrası GREEN asama.
  *
  * <p>Bu sınıfın TEK sorumluluğu: iş akışını orkestre etmek.</p>
  * <ul>
- *   <li>Doğrulama  → {@link UserValidator} (ayrı sınıf)</li>
- *   <li>Mapping    → {@link UserMapper}    (ayrı sınıf)</li>
- *   <li>JWT token  → {@link JwtTokenProvider} (ayrı sınıf)</li>
- *   <li>Oturum     → {@link RedisSessionService} (ayrı sınıf)</li>
+ *   <li>Doğrulama  — {@link UserValidator} (ayrı sınıf)</li>
+ *   <li>Mapping    — {@link UserMapper}    (ayrı sınıf)</li>
+ *   <li>JWT token  — {@link JwtTokenProvider} (ayrı sınıf)</li>
+ *   <li>Oturum     — {@link RedisSessionService} (ayrı sınıf)</li>
  * </ul>
  *
  * SOLID: Constructor Injection zorunlu — @Autowired field injection yasak.
@@ -49,13 +51,14 @@ public class UserServiceImpl implements UserService {
                            UserValidator userValidator,
                            UserMapper userMapper,
                            PasswordEncoderPort passwordEncoder) {
-        this.userRepository     = userRepository;
-        this.jwtTokenProvider   = jwtTokenProvider;
-        this.redisSessionService = redisSessionService;
-        this.userValidator      = userValidator;
-        this.userMapper         = userMapper;
-        this.passwordEncoder    = passwordEncoder;
+        this.userRepository       = userRepository;
+        this.jwtTokenProvider     = jwtTokenProvider;
+        this.redisSessionService  = redisSessionService;
+        this.userValidator        = userValidator;
+        this.userMapper           = userMapper;
+        this.passwordEncoder      = passwordEncoder;
     }
+
 
     // -------------------------------------------------------------------------
     // UserService impl
@@ -63,10 +66,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDTO register(RegisterRequest request) {
-        // 1) Doğrulama — UserValidator'a delege edildi (SRP)
+        // 1) Validasyon — UserValidator'a delege edildi (SRP)
         userValidator.validateRegisterRequest(request);
 
-        // 2) Tekil kullanıcı adı / e-posta kontrolü
+        // 2) Çakışma kontrolü (Username/Email)
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new ConflictException(
                     "Bu kullanıcı adı zaten kullanılıyor: " + request.getUsername());
@@ -92,7 +95,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public LoginResponse login(LoginRequest request) {
+    public UserDTO login(LoginRequest request) {
         // 1) Kullanıcıyı bul
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UnauthorizedException(
@@ -108,34 +111,24 @@ public class UserServiceImpl implements UserService {
             throw new UnauthorizedException("Kullanıcı adı veya şifre hatalı.");
         }
 
-        // 4) JWT token üretimi — JwtTokenProvider'a delege edildi (SRP)
-        // JwtTokenProvider kendi entity'ini bekliyor; model User'ı dönüştürüyoruz
-        String token = generateTokenForUser(user);
+        // 4) JWT token üretimi
+        String token = jwtTokenProvider.generateToken(user);
 
         // 5) Redis'e oturum kaydet — RedisSessionService'e delege edildi (SRP)
-        redisSessionService.createSession(token, user.getId(), java.time.Duration.ofHours(24));
+        redisSessionService.createSession(token, user.getId(), Duration.ofHours(24));
 
         log.info("Kullanıcı giriş yaptı: username={}", user.getUsername());
 
-        return new LoginResponse(
-                token,
-                user.getUsername(),
-                user.getEmail(),
-                user.getRole().name(),
-                86400L   // 24 saat (JwtTokenProvider default'u ile tutarlı)
-        );
+        UserDTO dto = userMapper.toDTO(user);
+        dto.setToken(token);
+        return dto;
     }
 
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
 
-    /**
-     * model.User → JwtTokenProvider uyumlu token üretimi.
-     */
-    private String generateTokenForUser(User user) {
-        return jwtTokenProvider.generateToken(user);
-    }
+    // generateTokenForUser metodu kaldırıldı çünkü jwtTokenProvider zaten model.User alıyor.
 
     // -------------------------------------------------------------------------
     // PasswordEncoderPort (iç arayüz — Spring Security'yi sarmalar)
