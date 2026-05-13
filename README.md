@@ -1,7 +1,16 @@
-# Campus Management System
+# TBL324 Envanter Takip Sistemi
+
+![Java](https://img.shields.io/badge/Java-17-orange?logo=java)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen?logo=springboot)
+![Android](https://img.shields.io/badge/Android-SDK%2034-blue?logo=android)
+![Docker](https://img.shields.io/badge/Docker-Enabled-blue?logo=docker)
 
 > **Kocaeli Üniversitesi — İleri Java Uygulamaları (TBL324)**
-> Dr. Öğr. Üyesi Samet Diri | 2 Kişilik Ekip
+> Dr. Öğr. Üyesi Samet Diri | Final Projesi
+> 
+> **Geliştirici Ekibi:**
+> - **Efekan Demir** (Üye 1)
+> - **Oktay** (Üye 2)
 
 ---
 
@@ -17,7 +26,7 @@
 8. [Docker Compose](#8-docker-compose)
 9. [Performans Test Raporu](#9-performans-test-raporu)
 10. [TDD Akışı](#10-tdd-akışı)
-11. [Kurulum](#11-kurulum)
+11. [Kurulum ve Çalıştırma](#11-kurulum-ve-çalıştırma)
 12. [Puan Değerlendirmesi](#12-puan-değerlendirmesi)
 
 ---
@@ -334,30 +343,25 @@ Proje TDD (Test Driven Development) prensiplerine göre geliştirilmiştir. Her 
 
 ---
 
-## 11. Kurulum
+## 11. Kurulum ve Çalıştırma
 
-### Gereksinimler
-
-| Araç | Versiyon |
-|------|----------|
-| Java | 17 |
-| Maven | 3.9.x |
-| Docker | 24.x |
-| Docker Compose | 2.24.x |
-| Android SDK | 34 |
-
-### Hızlı Başlangıç
+### 🚀 Hızlı Başlangıç
 
 ```bash
-# 1. Repo'yu klonla
-git clone https://github.com/[USERNAME]/campus-management-system.git
-cd campus-management-system
+# 1. Projeyi Klonlayın
+git clone https://github.com/EfekanDemir/Inventory_System.git
+cd Inventory_System
 
-# 2. Develop branch'e geç
-git checkout develop
+# 2. Altyapıyı Başlatın (Docker)
+docker-compose up --build -d
 
-# 3. Docker ile başlat
-docker-compose up --build
+# 3. Android Uygulamasını Derleyin
+cd android-app
+./gradlew assembleDebug
+
+# 4. Performans Testlerini Çalıştırın
+cd ..
+k6 run k6-tests/load-test.js
 ```
 
 ---
