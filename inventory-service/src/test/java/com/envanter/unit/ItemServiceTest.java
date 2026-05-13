@@ -9,7 +9,7 @@ import com.envanter.inventory.model.ItemStatus;
 import com.envanter.inventory.repository.ItemRepository;
 import com.envanter.inventory.repository.StockMovementRepository;
 import com.envanter.inventory.service.ItemServiceImpl;
-import com.envanter.user.exception.ConflictException;
+import com.envanter.inventory.exception.ConflictException;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -203,7 +203,7 @@ class ItemServiceTest {
 
         // -- When & Then --
         assertThrows(
-                com.envanter.user.exception.ResourceNotFoundException.class,
+                com.envanter.inventory.exception.ResourceNotFoundException.class,
                 () -> itemService.createItem(request),
                 "Gecersiz categoryId icin ResourceNotFoundException firlatilmali"
         );

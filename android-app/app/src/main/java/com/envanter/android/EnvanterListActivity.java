@@ -47,7 +47,7 @@ public class EnvanterListActivity extends AppCompatActivity {
         adapter = new EnvanterAdapter();
         rvEnvanterList.setAdapter(adapter);
 
-        apiService = ApiClient.getClient(this).create(ApiService.class);
+        apiService = ApiClient.getClient().create(ApiService.class);
 
         SharedPreferences prefs = getSharedPreferences("envanter_prefs", MODE_PRIVATE);
         token = prefs.getString("jwt_token", "");

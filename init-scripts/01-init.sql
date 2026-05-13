@@ -100,7 +100,7 @@ INSERT INTO users (username, email, password_hash, first_name, last_name, role)
 VALUES (
     'admin',
     'admin@envanter.com',
-    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', -- Admin123!
+    '$2a$10$ZG1/ewW/fQiyrAH0mNVd4uZMWB4JG49rs03//aROumQi9wstXK2pa', -- Admin123!
     'Sistem',
     'Yöneticisi',
     'ADMIN'

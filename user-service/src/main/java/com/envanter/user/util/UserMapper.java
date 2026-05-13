@@ -26,7 +26,7 @@ public class UserMapper {
         user.setPasswordHash(passwordHash);
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setRole(Role.USER);           // varsayılan rol
+        user.setRole(Role.PERSONEL);           // varsayılan rol
         user.setActive(true);
         return user;
     }

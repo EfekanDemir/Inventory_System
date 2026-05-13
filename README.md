@@ -91,48 +91,75 @@ C4Container
 
 ## 3. Veritabanı Şeması
 
-### 🗄️ Varlık-İlişki (ER) Diyagramı
-Aşağıdaki ER diyagramı, ilişkisel veritabanında (PostgreSQL) tutulan ana tabloları, alanlarını ve aralarındaki bağlantıları temsil eder.
+### 🗄️ Varlık-İlişki (ER) Diyagramı (PostgreSQL)
+Aşağıdaki diyagram, sistemin ilişkisel veri modelini ve tablolar arası bağlantıları temsil eder.
 
 ```mermaid
 erDiagram
-    User ||--o{ StockMovement : "yapar"
-    Item ||--o{ StockMovement : "hareketini içerir"
-    Category ||--|{ Item : "kategorilendirir"
+    USERS ||--o{ STOCK_MOVEMENTS : "yapar"
+    CATEGORIES ||--|{ ITEMS : "kategorilendirir"
+    ITEMS ||--o{ STOCK_MOVEMENTS : "hareketlerini içerir"
 
-    User {
-        Long id PK
-        String username
-        String email
-        String password
-        String role
-        LocalDateTime createdAt
+    USERS {
+        long id PK
+        string username "unique"
+        string email "unique"
+        string passwordHash
+        string role "ADMIN, MANAGER, PERSONEL"
+        string firstName
+        string lastName
+        boolean isActive
+        timestamp createdAt
+        timestamp updatedAt
     }
 
-    Item {
-        Long id PK
-        String itemCode
-        String name
-        Long categoryId FK
-        Integer quantity
-        Integer minStockLevel
-        String status
+    CATEGORIES {
+        long id PK
+        string name "unique"
+        string description
+        timestamp createdAt
     }
 
-    Category {
-        Long id PK
-        String name
-        String description
+    ITEMS {
+        long id PK
+        string itemCode "unique"
+        string name
+        string description
+        long categoryId FK
+        int quantity
+        int minStockLevel
+        string status "ACTIVE, INACTIVE"
+        timestamp createdAt
+        timestamp updatedAt
     }
 
-    StockMovement {
-        Long id PK
-        Long itemId FK
-        String movementType
-        Integer quantity
-        LocalDateTime createdAt
+    STOCK_MOVEMENTS {
+        long id PK
+        long itemId FK
+        string movementType "IN, OUT"
+        int quantity
+        string reason
+        long userId FK
+        timestamp createdAt
     }
 ```
+
+### 🍃 NoSQL Şeması (MongoDB)
+Loglama ve asenkron bildirim verileri için kullanılan koleksiyon yapıları:
+
+| Koleksiyon | Açıklama | Ana Alanlar |
+|------------|----------|-------------|
+| `NOTIFICATION_LOGS` | Kullanıcı bildirim geçmişi | `userId, message, type, sentAt, isRead` |
+| `ACTIVITY_LOGS` | Sistem genelindeki tüm hareketler | `userId, action, service, details, timestamp` |
+| `LOW_STOCK_ALERTS` | Kritik stok seviyesi uyarıları | `itemId, currentQty, minLevel, status, createdAt` |
+
+### ⚡ Redis Key-Value Yapısı
+Oturum yönetimi ve performans için kullanılan anahtar yapıları:
+
+- **Session Key:** `session:{token}`  
+  **Value:** `{ "userId": 123, "role": "ADMIN", "expiresAt": "..." }` (TTL: 24h)
+- **Cache Key:** `item:details:{itemCode}`  
+  **Value:** ItemDTO (JSON) (TTL: 1h)
 
 ---
 
@@ -140,63 +167,69 @@ erDiagram
 
 ### 🔄 Kritik Senaryolar Sequence Diyagramları
 
-#### 1. Kullanıcı Girişi (Login Akışı)
-Kullanıcının kimlik doğrulaması yapıp Redis üzerinde session açması süreci.
+#### 1. Envanter Ekleme Akışı (8 Adım)
 ```mermaid
 sequenceDiagram
-    participant A as Android
-    participant K as Kong Gateway
-    participant U as UserService
-    participant R as Redis
-
-    A->>K: POST /api/users/login (Credentials)
-    K->>U: Yönlendir
-    U->>U: Şifre Doğrulama
-    U->>R: Oturum aç ve Token kaydet
-    R-->>U: OK
-    U-->>K: 200 OK + JWT Token
-    K-->>A: JSON Response (Token)
-```
-
-#### 2. Yeni Ürün Ekleme (Create Item)
-Sisteme yetkili bir kullanıcının yeni bir stok kalemi eklemesi.
-```mermaid
-sequenceDiagram
-    participant A as Android
-    participant K as Kong Gateway
-    participant I as InventoryService
+    autonumber
+    participant A as Android Client
+    participant G as Kong Gateway
+    participant I as Inventory Service
     participant DB as PostgreSQL
-
-    A->>K: POST /api/inventory/items (JWT, Payload)
-    K->>I: İstek Yönlendirme (Token Valide)
-    I->>I: Validasyon (GenericValidator)
-    I->>DB: INSERT INTO items
-    DB-->>I: ID Döner
-    I-->>K: 201 Created + ItemDTO
-    K-->>A: JSON Response
+    
+    A->>G: POST /api/inventory/items (JWT + Payload)
+    G->>I: İstek Yönlendirme & Token Validation
+    I->>I: GenericValidator: Data Integrity Check
+    I->>DB: INSERT INTO items (Check Unique itemCode)
+    DB-->>I: 201 Created (Success)
+    I->>I: Cache Update (Redis)
+    I-->>G: ItemDTO + Success Response
+    G-->>A: JSON Response (201 Created)
 ```
 
-#### 3. Stok Hareketi ve Uyarı (Stock Movement)
-Stok düştüğünde MongoDB üzerine uyarı loglanması.
+#### 2. Stok Hareketi (Giriş/Çıkış) Akışı (12 Adım)
 ```mermaid
 sequenceDiagram
-    participant A as Android
-    participant K as Kong Gateway
-    participant I as InventoryService
-    participant N as NotificationService
+    autonumber
+    participant A as Android Client
+    participant G as Kong Gateway
+    participant I as Inventory Service
+    participant DB as PostgreSQL
+    participant N as Notification Service
     participant M as MongoDB
 
-    A->>K: POST /api/inventory/movements (OUT, qty)
-    K->>I: İstek Yönlendirme
-    I->>I: Stok Yeterliliği Kontrolü
-    I->>I: Miktar Güncellemesi
+    A->>G: POST /api/inventory/movements (OUT, qty)
+    G->>I: JWT Valide & Request Forward
+    I->>DB: Check Current Stock Level
+    DB-->>I: Return currentQty
+    I->>I: Verify quantity >= outgoingQty
+    I->>DB: UPDATE items SET quantity = quantity - qty
+    I->>DB: INSERT INTO stock_movements
+    DB-->>I: Transaction Commit
     opt Stok < minStockLevel
-        I->>N: Asenkron Bildirim İsteği (Event)
-        N->>M: LowStockAlert Logu Kaydet
-        M-->>N: OK
+        I->>N: Trigger LowStockEvent (Async)
+        N->>M: Save LowStockAlert
+        M-->>N: Log Created
     end
-    I-->>K: 200 OK
-    K-->>A: JSON Response
+    I-->>G: MovementResponse (200 OK)
+    G-->>A: Update UI (Stock Counter)
+```
+
+#### 3. Hata Yönetimi Akışı
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Android Client
+    participant G as Kong Gateway
+    participant S as Microservice
+    participant E as GlobalExceptionHandler
+
+    A->>G: POST /api/service/action (Invalid Data)
+    G->>S: Forward Request
+    S->>S: Business Logic Violation
+    S->>E: Throw CustomException (e.g. ConflictException)
+    E->>E: Format ErrorResponse (GenericResponse)
+    E-->>G: 409 Conflict + Error JSON
+    G-->>A: Display Error Toast/Dialog
 ```
 
 ---

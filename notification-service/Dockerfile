@@ -10,11 +10,12 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 WORKDIR /build
 
 COPY pom.xml .
-COPY ../pom.xml ../pom.xml
-RUN mvn dependency:go-offline -q --no-transfer-progress || true
+COPY common-lib ./common-lib
+COPY user-service ./user-service
+COPY inventory-service ./inventory-service
+COPY notification-service ./notification-service
 
-COPY src ./src
-RUN mvn package -DskipTests -q --no-transfer-progress
+RUN mvn clean package -pl notification-service -am -DskipTests -q --no-transfer-progress
 
 # --- Stage 2: Runtime ---------------------------------------------
 FROM eclipse-temurin:21-jre-alpine AS runtime
@@ -23,7 +24,7 @@ WORKDIR /app
 
 RUN apk add --no-cache curl
 
-COPY --from=builder /build/target/*.jar app.jar
+COPY --from=builder /build/notification-service/target/*.jar app.jar
 
 EXPOSE 8083
 

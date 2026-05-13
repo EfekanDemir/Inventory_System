@@ -27,5 +27,5 @@ public interface UserService {
      * @throws com.envanter.user.exception.ResourceNotFoundException kullanıcı bulunamazsa
      * @throws com.envanter.user.exception.UnauthorizedException    şifre yanlışsa
      */
-    LoginResponse login(LoginRequest request);
+    UserDTO login(LoginRequest request);
 }

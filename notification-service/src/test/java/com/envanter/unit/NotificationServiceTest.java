@@ -257,12 +257,17 @@ class NotificationServiceTest {
     @Test
     @DisplayName("NotificationFactory -- EMAIL tipi -> EmailSenderStrategy doner")
     void notificationFactory_WithEmailType_ReturnsEmailStrategy() {
+        // -- Given --
+        EmailSenderStrategy emailMock = mock(EmailSenderStrategy.class);
+        PushNotificationStrategy pushMock = mock(PushNotificationStrategy.class);
+        when(emailMock.getSupportedType()).thenReturn("EMAIL");
+        NotificationFactory factory = new NotificationFactory(emailMock, pushMock);
+
         // -- When --
-        NotificationStrategy strategy = NotificationFactory.createStrategy("EMAIL");
+        NotificationStrategy strategy = factory.createStrategy("EMAIL");
 
         // -- Then --
         assertNotNull(strategy);
-        assertThat(strategy).isInstanceOf(EmailSenderStrategy.class);
         assertEquals("EMAIL", strategy.getSupportedType());
     }
 
@@ -273,12 +278,17 @@ class NotificationServiceTest {
     @Test
     @DisplayName("NotificationFactory -- PUSH tipi -> PushNotificationStrategy doner")
     void notificationFactory_WithPushType_ReturnsPushStrategy() {
+        // -- Given --
+        EmailSenderStrategy emailMock = mock(EmailSenderStrategy.class);
+        PushNotificationStrategy pushMock = mock(PushNotificationStrategy.class);
+        when(pushMock.getSupportedType()).thenReturn("PUSH");
+        NotificationFactory factory = new NotificationFactory(emailMock, pushMock);
+
         // -- When --
-        NotificationStrategy strategy = NotificationFactory.createStrategy("PUSH");
+        NotificationStrategy strategy = factory.createStrategy("PUSH");
 
         // -- Then --
         assertNotNull(strategy);
-        assertThat(strategy).isInstanceOf(PushNotificationStrategy.class);
         assertEquals("PUSH", strategy.getSupportedType());
     }
 
@@ -289,10 +299,15 @@ class NotificationServiceTest {
     @Test
     @DisplayName("NotificationFactory -- bilinmeyen tip -> NotificationValidationException")
     void notificationFactory_WithUnknownType_ThrowsException() {
+        // -- Given --
+        EmailSenderStrategy emailMock = mock(EmailSenderStrategy.class);
+        PushNotificationStrategy pushMock = mock(PushNotificationStrategy.class);
+        NotificationFactory factory = new NotificationFactory(emailMock, pushMock);
+
         // -- When & Then --
         NotificationValidationException exception = assertThrows(
                 NotificationValidationException.class,
-                () -> NotificationFactory.createStrategy("TELEGRAM"),
+                () -> factory.createStrategy("TELEGRAM"),
                 "Bilinmeyen tip icin NotificationValidationException firlatilmali"
         );
 
