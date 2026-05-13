@@ -113,7 +113,7 @@ public class UserServiceImpl implements UserService {
         String token = generateTokenForUser(user);
 
         // 5) Redis'e oturum kaydet — RedisSessionService'e delege edildi (SRP)
-        redisSessionService.createSession(String.valueOf(user.getId()), token);
+        redisSessionService.createSession(token, user.getId(), java.time.Duration.ofHours(24));
 
         log.info("Kullanıcı giriş yaptı: username={}", user.getUsername());
 
@@ -132,14 +132,9 @@ public class UserServiceImpl implements UserService {
 
     /**
      * model.User → JwtTokenProvider uyumlu token üretimi.
-     * JwtTokenProvider kendi entity.User sınıfını kullanıyor;
-     * bu köprü metodu iki modeli birbirinden izole eder.
      */
     private String generateTokenForUser(User user) {
-        com.envanter.user.entity.User jwtUser = new com.envanter.user.entity.User();
-        jwtUser.setId(user.getId());
-        jwtUser.setRole(com.envanter.user.entity.Role.valueOf(user.getRole().name()));
-        return jwtTokenProvider.generateToken(jwtUser);
+        return jwtTokenProvider.generateToken(user);
     }
 
     // -------------------------------------------------------------------------
