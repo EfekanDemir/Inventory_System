@@ -14,10 +14,22 @@ android {
         versionName "1.0"
     }
 
+    signingConfigs {
+        release {
+            // Sunum için şablon signing config
+            storeFile file("release-keystore.jks")
+            storePassword "envanter123"
+            keyAlias "envanter-key"
+            keyPassword "envanter123"
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
