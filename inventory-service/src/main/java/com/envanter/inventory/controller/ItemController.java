@@ -3,6 +3,7 @@ package com.envanter.inventory.controller;
 import com.envanter.common.generic.GenericResponseWrapper;
 import com.envanter.inventory.dto.ItemDTO;
 import com.envanter.inventory.dto.ItemRequest;
+import com.envanter.inventory.dto.StockReportDTO;
 import com.envanter.inventory.service.ItemService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -26,12 +28,14 @@ import java.util.List;
  * Constructor Injection zorunlu — @Autowired field injection yasak.</p>
  *
  * Endpointler:
- * - GET    /api/inventory/items         → tüm itemlar
- * - GET    /api/inventory/items/{id}    → tek item
- * - POST   /api/inventory/items         → yeni item
- * - PUT    /api/inventory/items/{id}    → güncelle
- * - DELETE /api/inventory/items/{id}    → sil
- * - GET    /api/inventory/health        → sağlık kontrolü
+ * - GET    /api/inventory/items                    → tüm itemlar (opsiyonel ?search=, ?categoryId=)
+ * - GET    /api/inventory/items/{id}               → tek item
+ * - GET    /api/inventory/items/low-stock          → düşük stok uyarısı
+ * - GET    /api/inventory/items/report             → stok özet raporu
+ * - POST   /api/inventory/items                    → yeni item
+ * - PUT    /api/inventory/items/{id}               → güncelle
+ * - DELETE /api/inventory/items/{id}               → soft-delete (DISCONTINUED)
+ * - GET    /api/inventory/health                   → sağlık kontrolü
  */
 @RestController
 @RequestMapping("/api/inventory")
@@ -51,14 +55,49 @@ public class ItemController {
     // Endpoints
     // -------------------------------------------------------------------------
 
+    /**
+     * Tüm itemları listeler.
+     * Opsiyonel filtreler: ?search=anahtar  veya  ?categoryId=1
+     */
     @GetMapping("/items")
-    public ResponseEntity<GenericResponseWrapper<List<ItemDTO>>> getAllItems() {
-        return ResponseEntity.ok(GenericResponseWrapper.success(itemService.getAllItems()));
+    public ResponseEntity<GenericResponseWrapper<List<ItemDTO>>> getAllItems(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId) {
+
+        List<ItemDTO> items;
+        if (search != null && !search.isBlank()) {
+            items = itemService.searchItems(search);
+        } else if (categoryId != null) {
+            items = itemService.getItemsByCategory(categoryId);
+        } else {
+            items = itemService.getAllItems();
+        }
+        return ResponseEntity.ok(GenericResponseWrapper.success(items));
     }
 
     @GetMapping("/items/{id}")
     public ResponseEntity<GenericResponseWrapper<ItemDTO>> getItemById(@PathVariable Long id) {
         return ResponseEntity.ok(GenericResponseWrapper.success(itemService.getItemById(id)));
+    }
+
+    /**
+     * quantity <= minStockLevel olan itemları listeler.
+     * GET /api/inventory/items/low-stock
+     */
+    @GetMapping("/items/low-stock")
+    public ResponseEntity<GenericResponseWrapper<List<ItemDTO>>> getLowStockItems() {
+        List<ItemDTO> lowStock = itemService.getLowStockItems();
+        return ResponseEntity.ok(GenericResponseWrapper.success(lowStock,
+                lowStock.size() + " ürün minimum stok seviyesinin altında."));
+    }
+
+    /**
+     * Stok özet raporu (toplam değer, düşük stok sayısı vb.)
+     * GET /api/inventory/items/report
+     */
+    @GetMapping("/items/report")
+    public ResponseEntity<GenericResponseWrapper<StockReportDTO>> getStockReport() {
+        return ResponseEntity.ok(GenericResponseWrapper.success(itemService.getStockReport()));
     }
 
     @PostMapping("/items")
@@ -75,9 +114,12 @@ public class ItemController {
         return ResponseEntity.ok(GenericResponseWrapper.success(itemService.updateItem(id, request)));
     }
 
+    /**
+     * Soft-delete: item'ı silmez, status=DISCONTINUED yapar.
+     */
     @DeleteMapping("/items/{id}")
     public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
-        log.info("Item silme isteği: id={}", id);
+        log.info("Item soft-delete isteği: id={}", id);
         itemService.deleteItem(id);
         return ResponseEntity.noContent().build();
     }

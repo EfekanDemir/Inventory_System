@@ -18,6 +18,7 @@ import com.envanter.inventory.strategy.CompositeStockValidationStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -67,6 +68,7 @@ public class StockMovementServiceImpl implements StockMovementService {
     // -------------------------------------------------------------------------
 
     @Override
+    @Transactional
     public StockMovementDTO createMovement(StockMovementRequest request) {
         // 1) Temel dogrulama
         if (request.getQuantity() <= 0) {
@@ -139,9 +141,47 @@ public class StockMovementServiceImpl implements StockMovementService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<StockMovementDTO> getAllMovements() {
+        return movementRepository.findAll()
+                .stream()
+                .map(m -> toDTOMinimal(m))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<StockMovementDTO> getMovementsByType(MovementType type) {
+        return movementRepository.findByMovementType(type)
+                .stream()
+                .map(m -> toDTOMinimal(m))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<StockMovementDTO> getMovementsByDateRange(LocalDateTime from, LocalDateTime to) {
+        return movementRepository.findByDateRange(from, to)
+                .stream()
+                .map(m -> toDTOMinimal(m))
+                .collect(Collectors.toList());
+    }
+
     // -------------------------------------------------------------------------
     // Mapping helpers
     // -------------------------------------------------------------------------
+
+    /** Item detaysız hızlı mapping (listeleme endpoint'leri için). */
+    private StockMovementDTO toDTOMinimal(StockMovement movement) {
+        StockMovementDTO dto = new StockMovementDTO();
+        dto.setId(movement.getId());
+        dto.setItemId(movement.getItemId());
+        dto.setMovementType(movement.getMovementType());
+        dto.setQuantity(movement.getQuantity());
+        dto.setReason(movement.getReason());
+        dto.setUserId(movement.getUserId());
+        dto.setMovementDate(movement.getMovementDate());
+        dto.setReferenceNumber(movement.getReferenceNumber());
+        return dto;
+    }
 
     private StockMovement buildMovement(StockMovementRequest request) {
         StockMovement m = new StockMovement();

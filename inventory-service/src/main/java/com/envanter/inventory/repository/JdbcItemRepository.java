@@ -1,6 +1,7 @@
 package com.envanter.inventory.repository;
 
 import com.envanter.inventory.model.Item;
+import com.envanter.inventory.model.ItemStatus;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -120,6 +122,24 @@ public class JdbcItemRepository implements ItemRepository {
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM items WHERE id = ?", Integer.class, id);
         return count != null && count > 0;
+    }
+
+    /**
+     * Ad veya itemCode'da anahtar kelime araması.
+     * pg_trgm kuruluysa fuzzy arama destekler; bu hali ILIKE ile çalışır.
+     */
+    public List<Item> searchByKeyword(String keyword) {
+        String pattern = "%" + keyword.toLowerCase() + "%";
+        return jdbcTemplate.query(
+                "SELECT * FROM items WHERE LOWER(name) LIKE ? OR LOWER(item_code) LIKE ? ORDER BY id",
+                new ItemRowMapper(), pattern, pattern);
+    }
+
+    /** Soft-delete: status alanını DISCONTINUED olarak günceller. */
+    public void softDeleteById(Long id) {
+        jdbcTemplate.update(
+                "UPDATE items SET status = ?, updated_at = ? WHERE id = ?",
+                ItemStatus.DISCONTINUED.name(), LocalDateTime.now(), id);
     }
 
     // -------------------------------------------------------------------------

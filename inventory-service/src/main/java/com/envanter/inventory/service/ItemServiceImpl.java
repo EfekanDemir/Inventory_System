@@ -3,15 +3,19 @@ package com.envanter.inventory.service;
 import com.envanter.inventory.client.NotificationClient;
 import com.envanter.inventory.dto.ItemDTO;
 import com.envanter.inventory.dto.ItemRequest;
+import com.envanter.inventory.dto.StockReportDTO;
 import com.envanter.inventory.exception.ConflictException;
 import com.envanter.inventory.exception.ResourceNotFoundException;
 import com.envanter.inventory.model.Item;
+import com.envanter.inventory.model.ItemStatus;
 import com.envanter.inventory.repository.JdbcItemRepository;
 import com.envanter.inventory.util.ItemMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -120,11 +124,58 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
+    public List<ItemDTO> getItemsByCategory(Long categoryId) {
+        return itemRepository.findByCategoryId(categoryId)
+                .stream()
+                .map(itemMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ItemDTO> getLowStockItems() {
+        return itemRepository.findLowStockItems()
+                .stream()
+                .map(itemMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ItemDTO> searchItems(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return getAllItems();
+        }
+        return itemRepository.searchByKeyword(keyword)
+                .stream()
+                .map(itemMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void deleteItem(Long id) {
         if (!itemRepository.existsById(id)) {
             throw new ResourceNotFoundException("Silinecek item bulunamadı: id=" + id);
         }
-        itemRepository.deleteById(id);
-        log.info("Item silindi: id={}", id);
+        // Soft-delete: fiziksel silme yerine DISCONTINUED olarak isaretle
+        itemRepository.softDeleteById(id);
+        log.info("Item soft-delete edildi (DISCONTINUED): id={}", id);
+    }
+
+    @Override
+    public StockReportDTO getStockReport() {
+        List<Item> all = itemRepository.findAll();
+        StockReportDTO report = new StockReportDTO();
+        report.setTotalItems(all.size());
+        report.setActiveItems((int) all.stream()
+                .filter(i -> i.getStatus() == ItemStatus.ACTIVE).count());
+        report.setLowStockItems((int) all.stream()
+                .filter(i -> i.getQuantity() <= i.getMinStockLevel() && i.getStatus() == ItemStatus.ACTIVE).count());
+        report.setOutOfStockItems((int) all.stream()
+                .filter(i -> i.getQuantity() == 0).count());
+        BigDecimal totalValue = all.stream()
+                .filter(i -> i.getUnitPrice() != null)
+                .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        report.setTotalStockValue(totalValue);
+        return report;
     }
 }
