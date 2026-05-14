@@ -114,7 +114,7 @@ public class UserServiceImpl implements UserService {
         // 4) JWT token üretimi
         String token = jwtTokenProvider.generateToken(user);
 
-        // 5) Redis'e oturum kaydet
+        // 5) Redis'e oturum kaydet — RedisSessionService'e delege edildi (SRP)
         redisSessionService.createSession(token, user.getId(), Duration.ofHours(24));
 
         log.info("Kullanıcı giriş yaptı: username={}", user.getUsername());
