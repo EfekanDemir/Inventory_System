@@ -6,7 +6,7 @@ import com.envanter.inventory.exception.ConflictException;
 import com.envanter.inventory.exception.ResourceNotFoundException;
 import com.envanter.inventory.exception.ValidationException;
 import com.envanter.inventory.model.Category;
-import com.envanter.inventory.repository.JdbcCategoryRepository;
+import com.envanter.inventory.repository.CategoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,9 +26,9 @@ public class CategoryServiceImpl implements CategoryService {
 
     private static final Logger log = LoggerFactory.getLogger(CategoryServiceImpl.class);
 
-    private final JdbcCategoryRepository categoryRepository;
+    private final CategoryRepository categoryRepository;
 
-    public CategoryServiceImpl(JdbcCategoryRepository categoryRepository) {
+    public CategoryServiceImpl(CategoryRepository categoryRepository) {
         this.categoryRepository = categoryRepository;
     }
 

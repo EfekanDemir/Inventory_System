@@ -12,7 +12,7 @@ import com.envanter.inventory.model.MovementType;
 import com.envanter.inventory.model.StockLog;
 import com.envanter.inventory.model.StockMovement;
 import com.envanter.inventory.repository.JdbcItemRepository;
-import com.envanter.inventory.repository.JdbcStockMovementRepository;
+import com.envanter.inventory.repository.StockMovementRepository;
 import com.envanter.inventory.repository.MongoStockLogRepository;
 import com.envanter.inventory.strategy.CompositeStockValidationStrategy;
 import org.slf4j.Logger;
@@ -45,14 +45,14 @@ public class StockMovementServiceImpl implements StockMovementService {
     private static final Logger log = LoggerFactory.getLogger(StockMovementServiceImpl.class);
 
     private final JdbcItemRepository             itemRepository;
-    private final JdbcStockMovementRepository    movementRepository;
+    private final StockMovementRepository        movementRepository;
     private final MongoStockLogRepository        stockLogRepository;
     private final StockValidationStrategyFactory strategyFactory;
     private final NotificationClient             notificationClient;
 
     public StockMovementServiceImpl(
             JdbcItemRepository itemRepository,
-            JdbcStockMovementRepository movementRepository,
+            StockMovementRepository movementRepository,
             MongoStockLogRepository stockLogRepository,
             StockValidationStrategyFactory strategyFactory,
             NotificationClient notificationClient) {
@@ -165,6 +165,15 @@ public class StockMovementServiceImpl implements StockMovementService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public void clearAllHistory() {
+        log.warn("Tum stok hareket gecmisi ve loglar temizleniyor...");
+        movementRepository.clearAll();
+        stockLogRepository.clearAll();
+        log.info("Temizlik islemi tamamlandi.");
+    }
+
     // -------------------------------------------------------------------------
     // Mapping helpers
     // -------------------------------------------------------------------------
@@ -180,6 +189,15 @@ public class StockMovementServiceImpl implements StockMovementService {
         dto.setUserId(movement.getUserId());
         dto.setMovementDate(movement.getMovementDate());
         dto.setReferenceNumber(movement.getReferenceNumber());
+        dto.setAssignedTo(movement.getAssignedTo());
+        dto.setReturnDate(movement.getReturnDate());
+
+        // itemName'i doldur — Android adapter bunu gösteriyor
+        itemRepository.findById(movement.getItemId()).ifPresent(item -> {
+            dto.setItemName(item.getName());
+            dto.setItemCode(item.getItemCode());
+        });
+
         return dto;
     }
 
@@ -191,6 +209,8 @@ public class StockMovementServiceImpl implements StockMovementService {
         m.setReason(request.getReason());
         m.setUserId(request.getUserId());
         m.setReferenceNumber(request.getReferenceNumber());
+        m.setAssignedTo(request.getAssignedTo());
+        m.setReturnDate(request.getReturnDate());
         m.setMovementDate(LocalDateTime.now());
         return m;
     }
@@ -208,6 +228,8 @@ public class StockMovementServiceImpl implements StockMovementService {
         dto.setUserId(movement.getUserId());
         dto.setMovementDate(movement.getMovementDate());
         dto.setReferenceNumber(movement.getReferenceNumber());
+        dto.setAssignedTo(movement.getAssignedTo());
+        dto.setReturnDate(movement.getReturnDate());
         return dto;
     }
 }

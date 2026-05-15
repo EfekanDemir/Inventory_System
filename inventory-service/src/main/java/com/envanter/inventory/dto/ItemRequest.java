@@ -17,6 +17,7 @@ public class ItemRequest {
     private String location;
     private ItemStatus status;
     private BigDecimal unitPrice;
+    private String barcode;
 
     public ItemRequest() {}
 
@@ -56,4 +57,7 @@ public class ItemRequest {
 
     public BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+
+    public String getBarcode() { return barcode; }
+    public void setBarcode(String barcode) { this.barcode = barcode; }
 }

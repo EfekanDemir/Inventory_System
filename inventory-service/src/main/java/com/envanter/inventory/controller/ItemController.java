@@ -75,7 +75,7 @@ public class ItemController {
         return ResponseEntity.ok(GenericResponseWrapper.success(items));
     }
 
-    @GetMapping("/items/{id}")
+    @GetMapping("/items/{id:\\d+}")
     public ResponseEntity<GenericResponseWrapper<ItemDTO>> getItemById(@PathVariable Long id) {
         return ResponseEntity.ok(GenericResponseWrapper.success(itemService.getItemById(id)));
     }
@@ -107,7 +107,7 @@ public class ItemController {
         return ResponseEntity.status(HttpStatus.CREATED).body(GenericResponseWrapper.success(created));
     }
 
-    @PutMapping("/items/{id}")
+    @PutMapping("/items/{id:\\d+}")
     public ResponseEntity<GenericResponseWrapper<ItemDTO>> updateItem(@PathVariable Long id,
                                               @RequestBody ItemRequest request) {
         log.info("Item güncelleme isteği: id={}", id);
@@ -117,7 +117,7 @@ public class ItemController {
     /**
      * Soft-delete: item'ı silmez, status=DISCONTINUED yapar.
      */
-    @DeleteMapping("/items/{id}")
+    @DeleteMapping("/items/{id:\\d+}")
     public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
         log.info("Item soft-delete isteği: id={}", id);
         itemService.deleteItem(id);

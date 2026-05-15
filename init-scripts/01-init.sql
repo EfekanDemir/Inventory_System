@@ -53,9 +53,13 @@ CREATE TABLE IF NOT EXISTS items (
     status          VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE'
                         CHECK (status IN ('ACTIVE', 'INACTIVE', 'DISCONTINUED')),
     unit_price      DECIMAL(10,2)   DEFAULT 0.00,
+    barcode         VARCHAR(100),
     created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP       NOT NULL DEFAULT NOW()
 );
+
+-- Çalışan veritabanları için migration (IF NOT EXISTS güvenli çalışır)
+ALTER TABLE items ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);
 
 -- ── STOCK_MOVEMENTS tablosu ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS stock_movements (
@@ -66,7 +70,9 @@ CREATE TABLE IF NOT EXISTS stock_movements (
     reason           TEXT,
     user_id          BIGINT          REFERENCES users(id) ON DELETE SET NULL,
     movement_date    TIMESTAMP       NOT NULL DEFAULT NOW(),
-    reference_number VARCHAR(100)
+    reference_number VARCHAR(100),
+    assigned_to      VARCHAR(255),
+    return_date      TIMESTAMP
 );
 
 -- ── İndeksler ──────────────────────────────────────────────────

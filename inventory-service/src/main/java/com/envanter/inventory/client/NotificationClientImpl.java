@@ -1,7 +1,6 @@
 package com.envanter.inventory.client;
 
 import com.envanter.inventory.client.dto.InventoryAddedRequest;
-import com.envanter.inventory.client.dto.LowStockAlertRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

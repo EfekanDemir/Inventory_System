@@ -13,6 +13,9 @@ public class StockMovementRequest {
     private String reason;
     private Long userId;
     private String referenceNumber;
+    private String assignedTo;
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
+    private java.time.LocalDateTime returnDate;
 
     public StockMovementRequest() {}
 
@@ -39,4 +42,10 @@ public class StockMovementRequest {
 
     public String getReferenceNumber() { return referenceNumber; }
     public void setReferenceNumber(String referenceNumber) { this.referenceNumber = referenceNumber; }
+
+    public String getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+
+    public java.time.LocalDateTime getReturnDate() { return returnDate; }
+    public void setReturnDate(java.time.LocalDateTime returnDate) { this.returnDate = returnDate; }
 }

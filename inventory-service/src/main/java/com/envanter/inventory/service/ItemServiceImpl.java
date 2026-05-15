@@ -8,12 +8,13 @@ import com.envanter.inventory.exception.ConflictException;
 import com.envanter.inventory.exception.ResourceNotFoundException;
 import com.envanter.inventory.model.Item;
 import com.envanter.inventory.model.ItemStatus;
-import com.envanter.inventory.repository.JdbcItemRepository;
+import com.envanter.inventory.repository.ItemRepository;
+import com.envanter.inventory.repository.CategoryRepository;
 import com.envanter.inventory.util.ItemMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,16 +38,19 @@ public class ItemServiceImpl implements ItemService {
 
     private static final Logger log = LoggerFactory.getLogger(ItemServiceImpl.class);
 
-    private final JdbcItemRepository  itemRepository;
+    private final ItemRepository  itemRepository;
     private final NotificationClient  notificationClient;
     private final ItemMapper          itemMapper;
+    private final CategoryRepository  categoryRepository;
 
-    public ItemServiceImpl(JdbcItemRepository itemRepository,
+    public ItemServiceImpl(ItemRepository itemRepository,
                            NotificationClient notificationClient,
-                           ItemMapper itemMapper) {
+                           ItemMapper itemMapper,
+                           CategoryRepository categoryRepository) {
         this.itemRepository     = itemRepository;
         this.notificationClient = notificationClient;
         this.itemMapper         = itemMapper;
+        this.categoryRepository = categoryRepository;
     }
 
     // -------------------------------------------------------------------------
@@ -57,8 +61,22 @@ public class ItemServiceImpl implements ItemService {
     public List<ItemDTO> getAllItems() {
         return itemRepository.findAll()
                 .stream()
-                .map(itemMapper::toDTO)      // SRP: mapping ItemMapper'a delege edildi
+                .map(this::toDTOWithCategory)
                 .collect(Collectors.toList());
+    }
+
+    private ItemDTO toDTOWithCategory(Item item) {
+        ItemDTO dto = itemMapper.toDTO(item);
+        if (item.getCategoryId() != null) {
+            categoryRepository.findById(item.getCategoryId())
+                .ifPresentOrElse(
+                    cat -> dto.setCategoryName(cat.getName()),
+                    () -> dto.setCategoryName("Genel")
+                );
+        } else {
+            dto.setCategoryName("Genel");
+        }
+        return dto;
     }
 
     @Override
@@ -66,7 +84,7 @@ public class ItemServiceImpl implements ItemService {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Item bulunamadı: id=" + id));
-        return itemMapper.toDTO(item);       // SRP: mapping ItemMapper'a delege edildi
+        return toDTOWithCategory(item);
     }
 
     @Override
@@ -95,7 +113,7 @@ public class ItemServiceImpl implements ItemService {
                     saved.getId(), saved.getQuantity(), saved.getMinStockLevel());
         }
 
-        return itemMapper.toDTO(saved);      // SRP: mapping ItemMapper'a delege edildi
+        return toDTOWithCategory(saved);
     }
 
     @Override
@@ -120,14 +138,14 @@ public class ItemServiceImpl implements ItemService {
 
         Item updated = itemRepository.save(existing);
         log.info("Item güncellendi: id={}", updated.getId());
-        return itemMapper.toDTO(updated);    // SRP: mapping ItemMapper'a delege edildi
+        return toDTOWithCategory(updated);
     }
 
     @Override
     public List<ItemDTO> getItemsByCategory(Long categoryId) {
         return itemRepository.findByCategoryId(categoryId)
                 .stream()
-                .map(itemMapper::toDTO)
+                .map(this::toDTOWithCategory)
                 .collect(Collectors.toList());
     }
 
@@ -135,7 +153,7 @@ public class ItemServiceImpl implements ItemService {
     public List<ItemDTO> getLowStockItems() {
         return itemRepository.findLowStockItems()
                 .stream()
-                .map(itemMapper::toDTO)
+                .map(this::toDTOWithCategory)
                 .collect(Collectors.toList());
     }
 
@@ -146,7 +164,7 @@ public class ItemServiceImpl implements ItemService {
         }
         return itemRepository.searchByKeyword(keyword)
                 .stream()
-                .map(itemMapper::toDTO)
+                .map(this::toDTOWithCategory)
                 .collect(Collectors.toList());
     }
 
@@ -170,9 +188,9 @@ public class ItemServiceImpl implements ItemService {
         report.setLowStockItems((int) all.stream()
                 .filter(i -> i.getQuantity() <= i.getMinStockLevel() && i.getStatus() == ItemStatus.ACTIVE).count());
         report.setOutOfStockItems((int) all.stream()
-                .filter(i -> i.getQuantity() == 0).count());
+                .filter(i -> i.getQuantity() == 0 && i.getStatus() == ItemStatus.ACTIVE).count());
         BigDecimal totalValue = all.stream()
-                .filter(i -> i.getUnitPrice() != null)
+                .filter(i -> i.getStatus() == ItemStatus.ACTIVE && i.getUnitPrice() != null)
                 .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         report.setTotalStockValue(totalValue);

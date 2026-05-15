@@ -3,22 +3,23 @@ package com.envanter.inventory.controller;
 import com.envanter.common.generic.GenericResponseWrapper;
 import com.envanter.inventory.dto.StockMovementDTO;
 import com.envanter.inventory.dto.StockMovementRequest;
-import com.envanter.inventory.model.MovementType;
+
 import com.envanter.inventory.service.StockMovementService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.format.annotation.DateTimeFormat;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
+
 import java.util.List;
 
 /**
@@ -65,19 +66,9 @@ public class StockMovementController {
      *   ?from=2025-01-01T00:00:00  &  ?to=2025-12-31T23:59:59
      */
     @GetMapping("/movements")
-    public ResponseEntity<GenericResponseWrapper<List<StockMovementDTO>>> getMovements(
-            @RequestParam(required = false) MovementType type,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-
-        List<StockMovementDTO> movements;
-        if (type != null) {
-            movements = stockMovementService.getMovementsByType(type);
-        } else if (from != null && to != null) {
-            movements = stockMovementService.getMovementsByDateRange(from, to);
-        } else {
-            movements = stockMovementService.getAllMovements();
-        }
+    public ResponseEntity<GenericResponseWrapper<List<StockMovementDTO>>> getMovements() {
+        log.info("Tüm stok hareketleri listeleniyor...");
+        List<StockMovementDTO> movements = stockMovementService.getAllMovements();
         return ResponseEntity.ok(GenericResponseWrapper.success(movements));
     }
 
@@ -86,5 +77,12 @@ public class StockMovementController {
             @PathVariable Long itemId) {
         return ResponseEntity.ok(GenericResponseWrapper.success(
                 stockMovementService.getMovementsByItem(itemId)));
+    }
+
+    @PostMapping("/movements/clear")
+    public ResponseEntity<GenericResponseWrapper<String>> clearAllHistory() {
+        log.warn("Kullanici tarafindan tüm stok geçmişi temizleme isteği alindi.");
+        stockMovementService.clearAllHistory();
+        return ResponseEntity.ok(GenericResponseWrapper.success("Tüm stok hareket geçmişi ve loglar başarıyla temizlendi."));
     }
 }

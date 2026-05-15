@@ -24,4 +24,7 @@ public interface StockMovementService {
 
     /** Tarih aralığına göre filtreler. */
     List<StockMovementDTO> getMovementsByDateRange(LocalDateTime from, LocalDateTime to);
+
+    /** Tüm hareket geçmişini ve logları temizler. */
+    void clearAllHistory();
 }

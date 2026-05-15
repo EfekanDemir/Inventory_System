@@ -16,6 +16,8 @@ public class StockMovement {
     private Long userId;
     private LocalDateTime movementDate;
     private String referenceNumber;
+    private String assignedTo;
+    private LocalDateTime returnDate;
 
     public StockMovement() {}
 
@@ -44,4 +46,10 @@ public class StockMovement {
 
     public String getReferenceNumber() { return referenceNumber; }
     public void setReferenceNumber(String referenceNumber) { this.referenceNumber = referenceNumber; }
+
+    public String getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+
+    public LocalDateTime getReturnDate() { return returnDate; }
+    public void setReturnDate(LocalDateTime returnDate) { this.returnDate = returnDate; }
 }

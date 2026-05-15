@@ -6,15 +6,19 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import com.envanter.common.generic.GenericRepository;
+import org.springframework.lang.NonNull;
+import java.time.LocalDateTime;
 
 /**
  * MongoDB tabanli stok hareket log repository'si.
  *
- * <p>GenericRepository&lt;StockLog, String&gt; sozlesmesini implement eder
- * (MongoDB _id String tipindedir).</p>
+ * <p>
+ * GenericRepository&lt;StockLog, String&gt; sozlesmesini implement eder
+ * (MongoDB _id String tipindedir).
+ * </p>
  *
  * Koleksiyon: "stock_logs"
  * Amac: denetim izi, gecmis hareket analizi ve hizli raporlama.
@@ -31,7 +35,7 @@ public class MongoStockLogRepository implements GenericRepository<StockLog, Stri
     // -- GenericRepository impl -----------------------------------------------
 
     @Override
-    public Optional<StockLog> findById(String id) {
+    public Optional<StockLog> findById(@NonNull String id) {
         StockLog result = mongoTemplate.findById(id, StockLog.class);
         return Optional.ofNullable(result);
     }
@@ -42,18 +46,18 @@ public class MongoStockLogRepository implements GenericRepository<StockLog, Stri
     }
 
     @Override
-    public StockLog save(StockLog stockLog) {
+    public StockLog save(@NonNull StockLog stockLog) {
         return mongoTemplate.save(stockLog);
     }
 
     @Override
-    public void deleteById(String id) {
+    public void deleteById(@NonNull String id) {
         Query query = Query.query(Criteria.where("_id").is(id));
         mongoTemplate.remove(query, StockLog.class);
     }
 
     @Override
-    public boolean existsById(String id) {
+    public boolean existsById(@NonNull String id) {
         Query query = Query.query(Criteria.where("_id").is(id));
         return mongoTemplate.exists(query, StockLog.class);
     }
@@ -88,10 +92,9 @@ public class MongoStockLogRepository implements GenericRepository<StockLog, Stri
     /**
      * Tarih araligina gore log kayitlarini getirir.
      */
-    public List<StockLog> findByMovementDateBetween(LocalDateTime from, LocalDateTime to) {
+    public List<StockLog> findByMovementDateBetween(@NonNull LocalDateTime from, @NonNull LocalDateTime to) {
         Query query = Query.query(
-                Criteria.where("movement_date").gte(from).lte(to)
-        );
+                Criteria.where("movement_date").gte(from).lte(to));
         return mongoTemplate.find(query, StockLog.class);
     }
 
@@ -112,5 +115,10 @@ public class MongoStockLogRepository implements GenericRepository<StockLog, Stri
         query.with(org.springframework.data.domain.Sort.by(
                 org.springframework.data.domain.Sort.Direction.DESC, "movement_date"));
         return mongoTemplate.find(query, StockLog.class);
+    }
+
+    /** Tüm logları siler. */
+    public void clearAll() {
+        mongoTemplate.dropCollection(StockLog.class);
     }
 }

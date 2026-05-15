@@ -19,6 +19,8 @@ public class StockMovementDTO {
     private Long userId;
     private LocalDateTime movementDate;
     private String referenceNumber;
+    private String assignedTo;
+    private LocalDateTime returnDate;
 
     public StockMovementDTO() {}
 
@@ -54,4 +56,10 @@ public class StockMovementDTO {
 
     public String getReferenceNumber() { return referenceNumber; }
     public void setReferenceNumber(String referenceNumber) { this.referenceNumber = referenceNumber; }
+
+    public String getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+
+    public LocalDateTime getReturnDate() { return returnDate; }
+    public void setReturnDate(LocalDateTime returnDate) { this.returnDate = returnDate; }
 }

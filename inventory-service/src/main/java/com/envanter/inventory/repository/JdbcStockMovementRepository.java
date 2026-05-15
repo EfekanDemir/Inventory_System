@@ -1,5 +1,6 @@
 package com.envanter.inventory.repository;
 
+import com.envanter.common.generic.GenericRepository;
 import com.envanter.inventory.model.MovementType;
 import com.envanter.inventory.model.StockMovement;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -7,11 +8,11 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.lang.NonNull;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,7 +25,7 @@ import java.util.Optional;
  * <p>GenericRepository&lt;StockMovement, Long&gt; sozlesmesini implement eder.</p>
  */
 @Repository
-public class JdbcStockMovementRepository implements GenericRepository<StockMovement, Long> {
+public class JdbcStockMovementRepository implements StockMovementRepository {
 
     private final JdbcTemplate jdbc;
 
@@ -35,10 +36,11 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     // -- GenericRepository impl -----------------------------------------------
 
     @Override
-    public Optional<StockMovement> findById(Long id) {
+    public Optional<StockMovement> findById(@NonNull Long id) {
         String sql = """
                 SELECT id, item_id, movement_type, quantity,
-                       reason, user_id, movement_date, reference_number
+                       reason, user_id, movement_date, reference_number,
+                       assigned_to, return_date
                   FROM stock_movements
                  WHERE id = ?
                 """;
@@ -50,7 +52,8 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     public List<StockMovement> findAll() {
         String sql = """
                 SELECT id, item_id, movement_type, quantity,
-                       reason, user_id, movement_date, reference_number
+                       reason, user_id, movement_date, reference_number,
+                       assigned_to, return_date
                   FROM stock_movements
                  ORDER BY movement_date DESC
                 """;
@@ -58,7 +61,7 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     }
 
     @Override
-    public StockMovement save(StockMovement movement) {
+    public StockMovement save(@NonNull StockMovement movement) {
         if (movement.getId() == null) {
             return insert(movement);
         }
@@ -66,15 +69,20 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     }
 
     @Override
-    public void deleteById(Long id) {
+    public void deleteById(@NonNull Long id) {
         jdbc.update("DELETE FROM stock_movements WHERE id = ?", id);
     }
 
     @Override
-    public boolean existsById(Long id) {
+    public boolean existsById(@NonNull Long id) {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM stock_movements WHERE id = ?", Integer.class, id);
         return count != null && count > 0;
+    }
+
+    @Override
+    public void clearAll() {
+        jdbc.execute("TRUNCATE TABLE stock_movements RESTART IDENTITY CASCADE");
     }
 
     // -- Ek sorgular ----------------------------------------------------------
@@ -82,10 +90,12 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     /**
      * Belirli bir item'in tum stok hareketlerini getirir.
      */
+    @Override
     public List<StockMovement> findByItemId(Long itemId) {
         String sql = """
                 SELECT id, item_id, movement_type, quantity,
-                       reason, user_id, movement_date, reference_number
+                       reason, user_id, movement_date, reference_number,
+                       assigned_to, return_date
                   FROM stock_movements
                  WHERE item_id = ?
                  ORDER BY movement_date DESC
@@ -96,10 +106,12 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     /**
      * Hareket tipine gore filtreler (IN veya OUT).
      */
+    @Override
     public List<StockMovement> findByMovementType(MovementType type) {
         String sql = """
                 SELECT id, item_id, movement_type, quantity,
-                       reason, user_id, movement_date, reference_number
+                       reason, user_id, movement_date, reference_number,
+                       assigned_to, return_date
                   FROM stock_movements
                  WHERE movement_type = ?
                  ORDER BY movement_date DESC
@@ -110,10 +122,12 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     /**
      * Tarih araligina gore stok hareketlerini getirir.
      */
+    @Override
     public List<StockMovement> findByDateRange(LocalDateTime from, LocalDateTime to) {
         String sql = """
                 SELECT id, item_id, movement_type, quantity,
-                       reason, user_id, movement_date, reference_number
+                       reason, user_id, movement_date, reference_number,
+                       assigned_to, return_date
                   FROM stock_movements
                  WHERE movement_date BETWEEN ? AND ?
                  ORDER BY movement_date DESC
@@ -127,8 +141,8 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     private StockMovement insert(StockMovement movement) {
         String sql = """
                 INSERT INTO stock_movements
-                  (item_id, movement_type, quantity, reason, user_id, movement_date, reference_number)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                  (item_id, movement_type, quantity, reason, user_id, movement_date, reference_number, assigned_to, return_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -137,7 +151,7 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
                 : LocalDateTime.now();
 
         jdbc.update(con -> {
-            PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = con.prepareStatement(sql, new String[]{"id"});
             ps.setObject(1, movement.getItemId());
             ps.setString(2, movement.getMovementType() != null
                     ? movement.getMovementType().name() : null);
@@ -146,6 +160,8 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
             ps.setObject(5, movement.getUserId());
             ps.setTimestamp(6, Timestamp.valueOf(now));
             ps.setString(7, movement.getReferenceNumber());
+            ps.setString(8, movement.getAssignedTo());
+            ps.setTimestamp(9, movement.getReturnDate() != null ? Timestamp.valueOf(movement.getReturnDate()) : null);
             return ps;
         }, keyHolder);
 
@@ -161,7 +177,8 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
         String sql = """
                 UPDATE stock_movements
                    SET item_id = ?, movement_type = ?, quantity = ?,
-                       reason = ?, user_id = ?, movement_date = ?, reference_number = ?
+                       reason = ?, user_id = ?, movement_date = ?, reference_number = ?,
+                       assigned_to = ?, return_date = ?
                  WHERE id = ?
                 """;
         jdbc.update(sql,
@@ -173,6 +190,8 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
                 movement.getMovementDate() != null
                         ? Timestamp.valueOf(movement.getMovementDate()) : null,
                 movement.getReferenceNumber(),
+                movement.getAssignedTo(),
+                movement.getReturnDate() != null ? Timestamp.valueOf(movement.getReturnDate()) : null,
                 movement.getId()
         );
         return movement;
@@ -183,7 +202,7 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
     private static final class StockMovementRowMapper implements RowMapper<StockMovement> {
 
         @Override
-        public StockMovement mapRow(ResultSet rs, int rowNum) throws SQLException {
+        public StockMovement mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
             StockMovement sm = new StockMovement();
             sm.setId(rs.getLong("id"));
             sm.setItemId(rs.getLong("item_id"));
@@ -200,6 +219,10 @@ public class JdbcStockMovementRepository implements GenericRepository<StockMovem
 
             Timestamp movementDate = rs.getTimestamp("movement_date");
             if (movementDate != null) sm.setMovementDate(movementDate.toLocalDateTime());
+
+            sm.setAssignedTo(rs.getString("assigned_to"));
+            Timestamp returnDate = rs.getTimestamp("return_date");
+            if (returnDate != null) sm.setReturnDate(returnDate.toLocalDateTime());
 
             return sm;
         }

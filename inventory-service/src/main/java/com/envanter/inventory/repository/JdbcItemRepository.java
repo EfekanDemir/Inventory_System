@@ -6,6 +6,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.lang.NonNull;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -35,7 +36,7 @@ public class JdbcItemRepository implements ItemRepository {
     // -------------------------------------------------------------------------
 
     @Override
-    public Optional<Item> findById(Long id) {
+    public Optional<Item> findById(@NonNull Long id) {
         try {
             Item item = jdbcTemplate.queryForObject(
                     "SELECT * FROM items WHERE id = ?",
@@ -59,8 +60,22 @@ public class JdbcItemRepository implements ItemRepository {
     }
 
     @Override
+    public Optional<Item> findByBarcode(String barcode) {
+        try {
+            Item item = jdbcTemplate.queryForObject(
+                    "SELECT * FROM items WHERE barcode = ?",
+                    new ItemRowMapper(), barcode);
+            return Optional.ofNullable(item);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public List<Item> findAll() {
-        return jdbcTemplate.query("SELECT * FROM items ORDER BY id", new ItemRowMapper());
+        return jdbcTemplate.query(
+                "SELECT * FROM items WHERE status != 'DISCONTINUED' ORDER BY id",
+                new ItemRowMapper());
     }
 
     @Override
@@ -78,17 +93,17 @@ public class JdbcItemRepository implements ItemRepository {
     }
 
     @Override
-    public Item save(Item item) {
+    public Item save(@NonNull Item item) {
         if (item.getId() == null) {
             // INSERT
             jdbcTemplate.update(
                     "INSERT INTO items (item_code, name, description, category_id, quantity, " +
-                    "min_stock_level, location, status, unit_price, created_at, updated_at) " +
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    "min_stock_level, location, status, unit_price, barcode, created_at, updated_at) " +
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     item.getItemCode(), item.getName(), item.getDescription(),
                     item.getCategoryId(), item.getQuantity(), item.getMinStockLevel(),
                     item.getLocation(), item.getStatus().name(),
-                    item.getUnitPrice(), item.getCreatedAt(), item.getUpdatedAt());
+                    item.getUnitPrice(), item.getBarcode(), item.getCreatedAt(), item.getUpdatedAt());
             Long id = jdbcTemplate.queryForObject(
                     "SELECT currval(pg_get_serial_sequence('items','id'))", Long.class);
             item.setId(id);
@@ -96,17 +111,17 @@ public class JdbcItemRepository implements ItemRepository {
             // UPDATE
             jdbcTemplate.update(
                     "UPDATE items SET item_code=?, name=?, description=?, category_id=?, quantity=?, " +
-                    "min_stock_level=?, location=?, status=?, unit_price=?, updated_at=? WHERE id=?",
+                    "min_stock_level=?, location=?, status=?, unit_price=?, barcode=?, updated_at=? WHERE id=?",
                     item.getItemCode(), item.getName(), item.getDescription(),
                     item.getCategoryId(), item.getQuantity(), item.getMinStockLevel(),
                     item.getLocation(), item.getStatus().name(),
-                    item.getUnitPrice(), item.getUpdatedAt(), item.getId());
+                    item.getUnitPrice(), item.getBarcode(), item.getUpdatedAt(), item.getId());
         }
         return item;
     }
 
     @Override
-    public void deleteById(Long id) {
+    public void deleteById(@NonNull Long id) {
         jdbcTemplate.update("DELETE FROM items WHERE id = ?", id);
     }
 
@@ -117,8 +132,8 @@ public class JdbcItemRepository implements ItemRepository {
         return count != null && count > 0;
     }
 
-    /** ItemRepository arayüzünde tanımlı extra metot. */
-    public boolean existsById(Long id) {
+    @Override
+    public boolean existsById(@NonNull Long id) {
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM items WHERE id = ?", Integer.class, id);
         return count != null && count > 0;
@@ -148,7 +163,7 @@ public class JdbcItemRepository implements ItemRepository {
 
     private static class ItemRowMapper implements RowMapper<Item> {
         @Override
-        public Item mapRow(ResultSet rs, int rowNum) throws SQLException {
+        public Item mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
             Item item = new Item();
             item.setId(rs.getLong("id"));
             item.setItemCode(rs.getString("item_code"));
@@ -161,6 +176,7 @@ public class JdbcItemRepository implements ItemRepository {
             item.setStatus(com.envanter.inventory.model.ItemStatus.valueOf(rs.getString("status")));
             BigDecimal price = rs.getBigDecimal("unit_price");
             item.setUnitPrice(price);
+            item.setBarcode(rs.getString("barcode"));
             item.setCreatedAt(rs.getTimestamp("created_at") != null
                     ? rs.getTimestamp("created_at").toLocalDateTime() : null);
             item.setUpdatedAt(rs.getTimestamp("updated_at") != null

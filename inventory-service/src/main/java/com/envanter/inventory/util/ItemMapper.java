@@ -46,6 +46,7 @@ public class ItemMapper {
         dto.setLocation(item.getLocation());
         dto.setStatus(item.getStatus());
         dto.setUnitPrice(item.getUnitPrice());
+        dto.setBarcode(item.getBarcode());
         dto.setCreatedAt(item.getCreatedAt());
         return dto;
     }
@@ -62,5 +63,6 @@ public class ItemMapper {
         item.setLocation(request.getLocation());
         item.setStatus(request.getStatus() != null ? request.getStatus() : ItemStatus.ACTIVE);
         item.setUnitPrice(request.getUnitPrice());
+        item.setBarcode(request.getBarcode());
     }
 }

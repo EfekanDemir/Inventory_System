@@ -19,6 +19,8 @@ public class ItemDTO {
     private String location;
     private ItemStatus status;
     private BigDecimal unitPrice;
+    private String barcode;
+    private String categoryName;
     private LocalDateTime createdAt;
 
     public ItemDTO() {}
@@ -38,6 +40,9 @@ public class ItemDTO {
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
 
@@ -52,6 +57,9 @@ public class ItemDTO {
 
     public BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+
+    public String getBarcode() { return barcode; }
+    public void setBarcode(String barcode) { this.barcode = barcode; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

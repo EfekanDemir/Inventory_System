@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.lang.NonNull;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,11 +21,11 @@ import java.util.Optional;
 /**
  * PostgreSQL CATEGORIES tablosu için JDBC tabanlı repository.
  *
- * <p>DIP: Herhangi bir arayüze bağlı; somut bağımlılık yok.
+ * <p>DIP: CategoryRepository arayüzünü implement eder.
  * Constructor Injection zorunlu.</p>
  */
 @Repository
-public class JdbcCategoryRepository {
+public class JdbcCategoryRepository implements CategoryRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -32,13 +33,15 @@ public class JdbcCategoryRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Override
     public List<Category> findAll() {
         return jdbcTemplate.query(
                 "SELECT id, name, description, created_at FROM categories ORDER BY id",
                 new CategoryRowMapper());
     }
 
-    public Optional<Category> findById(Long id) {
+    @Override
+    public Optional<Category> findById(@NonNull Long id) {
         try {
             Category cat = jdbcTemplate.queryForObject(
                     "SELECT id, name, description, created_at FROM categories WHERE id = ?",
@@ -49,6 +52,7 @@ public class JdbcCategoryRepository {
         }
     }
 
+    @Override
     public Optional<Category> findByName(String name) {
         try {
             Category cat = jdbcTemplate.queryForObject(
@@ -60,7 +64,8 @@ public class JdbcCategoryRepository {
         }
     }
 
-    public Category save(Category category) {
+    @Override
+    public Category save(@NonNull Category category) {
         if (category.getId() == null) {
             // INSERT
             KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -88,11 +93,13 @@ public class JdbcCategoryRepository {
         return category;
     }
 
-    public void deleteById(Long id) {
+    @Override
+    public void deleteById(@NonNull Long id) {
         jdbcTemplate.update("DELETE FROM categories WHERE id = ?", id);
     }
 
-    public boolean existsById(Long id) {
+    @Override
+    public boolean existsById(@NonNull Long id) {
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM categories WHERE id = ?", Integer.class, id);
         return count != null && count > 0;
@@ -104,7 +111,7 @@ public class JdbcCategoryRepository {
 
     private static class CategoryRowMapper implements RowMapper<Category> {
         @Override
-        public Category mapRow(ResultSet rs, int rowNum) throws SQLException {
+        public Category mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
             Timestamp ts = rs.getTimestamp("created_at");
             return new Category(
                     rs.getLong("id"),
