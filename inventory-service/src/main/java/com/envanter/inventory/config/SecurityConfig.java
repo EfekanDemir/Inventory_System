@@ -1,4 +1,4 @@
-package com.envanter.user.security;
+package com.envanter.inventory.config;
 
 import com.envanter.common.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
@@ -26,7 +26,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/users/login", "/api/users/register", "/actuator/health", "/actuator/**").permitAll()
+                .requestMatchers("/api/inventory/health", "/actuator/health", "/actuator/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
