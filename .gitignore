@@ -122,4 +122,5 @@ android-app/local.properties
 *.md
 !README.md
 !CONTRIBUTING.md
+!k6-tests/reports/performance-report.md
 target/ 

@@ -1,45 +1,82 @@
 # TBL324 Envanter Takip Sistemi
 
-![Java](https://img.shields.io/badge/Java-17-orange?logo=java)
+![Java](https://img.shields.io/badge/Java-21-orange?logo=java)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen?logo=springboot)
 ![Android](https://img.shields.io/badge/Android-SDK%2034-blue?logo=android)
 ![Docker](https://img.shields.io/badge/Docker-Enabled-blue?logo=docker)
+![Kong](https://img.shields.io/badge/Kong-3.5-003459?logo=kong)
 
 > **Kocaeli Üniversitesi — İleri Java Uygulamaları (TBL324)**
 > Dr. Öğr. Üyesi Samet Diri | Final Projesi
-> 
+>
 > **Geliştirici Ekibi:**
-> - **Efekan Demir** (Üye 1)
-> - **Oktay** (Üye 2)
+> - **Efekan Demir** (Üye 1) --231307054
+> - **Oktay** (Üye 2) -- 231307074
 
 ---
 
-## 📋 İçindekiler
+## İçindekiler
 
 1. [Proje Özeti](#1-proje-özeti)
-2. [Sistem Mimarisi](#2-sistem-mimarisi)
-3. [Veritabanı Şeması](#3-veritabanı-şeması)
-4. [API Akış Diyagramı](#4-api-akış-diyagramı)
-5. [API Uç Noktaları (Endpoints)](#5-api-uç-noktaları-endpoints)
-6. [Mikroservis Detayları](#6-mikroservis-detayları)
-7. [Android Canvas Grafikleri](#7-android-canvas-grafikleri)
-8. [Docker Compose](#8-docker-compose)
-9. [Performans Test Raporu](#9-performans-test-raporu)
-10. [TDD Akışı](#10-tdd-akışı)
-11. [Kurulum ve Çalıştırma](#11-kurulum-ve-çalıştırma)
-12. [Puan Değerlendirmesi](#12-puan-değerlendirmesi)
+2. [Proje Yapısı](#2-proje-yapısı)
+3. [Sistem Mimarisi](#3-sistem-mimarisi)
+4. [Veritabanı Şeması](#4-veritabanı-şeması)
+5. [API Akış Diyagramı](#5-api-akış-diyagramı)
+6. [API Uç Noktaları](#6-api-uç-noktaları)
+7. [Mikroservis Detayları](#7-mikroservis-detayları)
+8. [Android Mobil Uygulama](#8-android-mobil-uygulama)
+9. [Docker Compose](#9-docker-compose)
+10. [Performans Testleri](#10-performans-testleri)
+11. [TDD Akışı](#11-tdd-akışı)
+12. [Kurulum ve Çalıştırma](#12-kurulum-ve-çalıştırma)
+13. [Puan Değerlendirmesi](#13-puan-değerlendirmesi)
 
 ---
 
 ## 1. Proje Özeti
-**TBL324 Envanter Takip Sistemi**, modern mikroservis mimarisi kullanılarak geliştirilmiş, ölçeklenebilir bir envanter yönetim çözümüdür. Sistem; kullanıcı yönetimi, stok takibi ve otomatik bildirim mekanizmalarını merkezi bir API Gateway arkasında birleştirir. Android mobil uygulaması üzerinden stok seviyeleri görselleştirilebilir ve tüm hareketler gerçek zamanlı olarak izlenebilir.
+
+**TBL324 Envanter Takip Sistemi**, modern mikroservis mimarisi kullanılarak geliştirilmiş, ölçeklenebilir bir envanter yönetim çözümüdür. Sistem; kullanıcı yönetimi, stok takibi ve otomatik bildirim mekanizmalarını merkezi bir API Gateway arkasında birleştirir. Android mobil uygulaması üzerinden stok seviyeleri gerçek zamanlı görselleştirilebilir, ürünler barkod alanıyla yönetilebilir ve tüm hareketler kayıt altına alınabilir.
 
 ---
 
-## 2. Sistem Mimarisi
+## 2. Proje Yapısı
 
-### 🌐 C4 Container Diyagramı
-Aşağıdaki diyagram, sistemin konteyner mimarisini, kullanıcıların sistemle nasıl etkileşime girdiğini ve mikroservislerin birbirleriyle ve veritabanlarıyla olan ilişkilerini göstermektedir.
+```
+Inventory_System/
+├── android-app/                  # Android mobil istemci (Java, SDK 34)
+│   └── app/src/main/
+│       ├── java/com/envanter/android/
+│       │   ├── LoginActivity.java
+│       │   ├── DashboardActivity.java
+│       │   ├── EnvanterListActivity.java
+│       │   ├── adapter/EnvanterAdapter.java
+│       │   ├── api/              # Retrofit ApiClient & ApiService
+│       │   ├── model/            # DTO sınıfları (ItemDTO, CategoryDTO, vb.)
+│       │   └── util/             # ApiErrorHandler
+│       └── res/layout/           # XML layout dosyaları
+├── common-lib/                   # Paylaşılan kütüphane (JWT, GenericResponse, vb.)
+│   └── src/main/java/com/envanter/common/
+│       ├── security/             # JwtTokenProvider, JwtAuthenticationFilter
+│       ├── dto/                  # GenericResponse<T>
+│       └── exception/            # GlobalExceptionHandler, özel exception sınıfları
+├── user-service/                 # Kullanıcı & kimlik doğrulama servisi (port 8081)
+├── inventory-service/            # Envanter & stok yönetimi servisi (port 8082)
+├── notification-service/         # Bildirim & log servisi (port 8083)
+├── init-scripts/
+│   └── 01-init.sql               # PostgreSQL şema ve seed data
+├── kong-config/
+│   └── kong.yml                  # Kong DB-less declarative config
+├── k6-tests/                     # Performans test scriptleri
+├── docker-compose.yml            # Tüm servisleri ayağa kaldıran orkestrasyon dosyası
+├── pom.xml                       # Maven multi-module root POM
+└── openapi.yaml                  # OpenAPI 3.0 API tanımı
+```
+
+---
+
+## 3. Sistem Mimarisi
+
+### C4 Container Diyagramı
 
 ```mermaid
 C4Container
@@ -49,37 +86,30 @@ C4Container
     Person(yonetici, "Yönetici", "Sistemdeki tüm hareketleri ve logları izleyebilen yönetici.")
 
     System_Boundary(c1, "Envanter Takip Sistemi") {
-        Container(android_app, "Android App", "Java, Android SDK", "Kullanıcıların sisteme eriştiği mobil uygulama.")
-        Container(kong_gateway, "Kong Gateway", "Kong 3.5", "Tüm API trafiğini yöneten ve servislere dağıtan API Ağ Geçidi.")
-        
-        Container(user_service, "user-service", "Java, Spring Boot", "Kullanıcı kaydı, kimlik doğrulama ve JWT token üretimi.")
-        Container(inventory_service, "inventory-service", "Java, Spring Boot", "Envanter yönetimi, stok takibi ve hareketlerin işlenmesi.")
-        Container(notification_service, "notification-service", "Java, Spring Boot", "Düşük stok bildirimleri, loglama ve raporlama.")
-        
-        ContainerDb(postgres_db, "PostgreSQL", "Relational Database", "Kullanıcı ve envanter/stok verilerinin tutulduğu ana veritabanı.")
-        ContainerDb(mongodb_db, "MongoDB", "NoSQL Database", "Stok hareketleri, sistem logları ve bildirimlerin tutulduğu veritabanı.")
-        ContainerDb(redis_cache, "Redis", "In-Memory Cache", "Session yönetimi ve performans artışı için önbellekleme.")
+        Container(android_app, "Android App", "Java, Android SDK 34", "Material Design 3 tabanlı mobil uygulama. Stok grafiği, barkod girişi ve hareket yönetimi.")
+        Container(kong_gateway, "Kong Gateway", "Kong 3.5 DB-less", "Tüm API trafiğini yöneten API Ağ Geçidi. API-key ve JWT doğrulama yapar.")
+
+        Container(user_service, "user-service", "Java 21, Spring Boot 3.2", "Kullanıcı kaydı, kimlik doğrulama ve JWT token üretimi. Port: 8081")
+        Container(inventory_service, "inventory-service", "Java 21, Spring Boot 3.2", "Envanter CRUD, stok hareketleri, barkod yönetimi, stok raporu. Port: 8082")
+        Container(notification_service, "notification-service", "Java 21, Spring Boot 3.2", "Düşük stok bildirimleri, loglama ve raporlama. Port: 8083")
+
+        ContainerDb(postgres_db, "PostgreSQL 15", "Relational Database", "users, categories, items, stock_movements tabloları.")
+        ContainerDb(mongodb_db, "MongoDB 6", "NoSQL Database", "Bildirim logları, aktivite kayıtları.")
+        ContainerDb(redis_cache, "Redis 7", "In-Memory Cache", "JWT session ve önbellekleme.")
     }
 
     Rel(personel, android_app, "Kullanır", "HTTPS/JSON")
     Rel(yonetici, android_app, "Kullanır", "HTTPS/JSON")
-
-    Rel(android_app, kong_gateway, "API İstekleri yapar", "HTTPS/JSON")
-
+    Rel(android_app, kong_gateway, "API istekleri", "HTTP/JSON + api-key")
     Rel(kong_gateway, user_service, "İletir", "HTTP/JSON")
     Rel(kong_gateway, inventory_service, "İletir", "HTTP/JSON")
     Rel(kong_gateway, notification_service, "İletir", "HTTP/JSON")
-
-    Rel(inventory_service, notification_service, "Bildirim gönderir", "HTTP/JSON")
-    Rel(inventory_service, user_service, "Kullanıcı doğrular", "HTTP/JSON")
-
+    Rel(inventory_service, notification_service, "Düşük stok olayı", "HTTP/JSON async")
     Rel(user_service, postgres_db, "Okur/Yazar", "JDBC")
-    Rel(user_service, redis_cache, "Oturum açar/Token saklar", "Redis Protocol")
-
+    Rel(user_service, redis_cache, "Session/Token", "Redis Protocol")
     Rel(inventory_service, postgres_db, "Okur/Yazar", "JDBC")
     Rel(inventory_service, mongodb_db, "Log yazar", "MongoDB Protocol")
-
-    Rel(notification_service, mongodb_db, "Bildirim/Log okur ve yazar", "MongoDB Protocol")
+    Rel(notification_service, mongodb_db, "Bildirim okur/yazar", "MongoDB Protocol")
 
     UpdateElementStyle(android_app, $bgColor="#E6A822", $fontColor="#FFFFFF")
     UpdateElementStyle(kong_gateway, $bgColor="#E6399B", $fontColor="#FFFFFF")
@@ -91,17 +121,22 @@ C4Container
     UpdateElementStyle(redis_cache, $bgColor="#34A853", $fontColor="#FFFFFF")
 ```
 
-### 🧩 Bileşen Açıklamaları
-- **user-service:** Kullanıcı kimlik doğrulama, JWT token üretimi ve yetkilendirme işlemlerini gerçekleştirir. Session verilerini Redis üzerinde tutar.
-- **inventory-service:** Envanter yönetimi, stok takibi ve hareketlerin işlenmesini sağlar. Kritik stok seviyelerinde bildirim servisini asenkron olarak tetikler.
-- **notification-service:** Düşük stok bildirimleri gibi sistem uyarılarını işler, raporlama yapar ve aktivite loglarını MongoDB üzerinde saklar.
+### Bileşen Açıklamaları
+
+| Bileşen | Teknoloji | Sorumluluk |
+|---------|-----------|------------|
+| **common-lib** | Java 21 | JWT filter/provider, GenericResponse, GlobalExceptionHandler |
+| **user-service** | Spring Boot 3.2, JDBC, Redis | Kimlik doğrulama, JWT üretimi, kullanıcı yönetimi |
+| **inventory-service** | Spring Boot 3.2, JDBC, MongoDB | Ürün CRUD, stok hareketleri, barkod, stok raporu |
+| **notification-service** | Spring Boot 3.2, MongoDB, Mailhog | Düşük stok bildirimleri, e-posta, log |
+| **Kong Gateway** | Kong 3.5 DB-less | API-key auth, rate limiting, servis yönlendirme |
+| **Android App** | Java, SDK 34, Retrofit2 | Material Design 3 UI, gerçek zamanlı stok grafiği |
 
 ---
 
-## 3. Veritabanı Şeması
+## 4. Veritabanı Şeması
 
-### 🗄️ Varlık-İlişki (ER) Diyagramı (PostgreSQL)
-Aşağıdaki diyagram, sistemin ilişkisel veri modelini ve tablolar arası bağlantıları temsil eder.
+### ER Diyagramı (PostgreSQL)
 
 ```mermaid
 erDiagram
@@ -110,73 +145,76 @@ erDiagram
     ITEMS ||--o{ STOCK_MOVEMENTS : "hareketlerini içerir"
 
     USERS {
-        long id PK
-        string username "unique"
-        string email "unique"
-        string passwordHash
-        string role "ADMIN, MANAGER, PERSONEL"
-        string firstName
-        string lastName
-        boolean isActive
-        timestamp createdAt
-        timestamp updatedAt
+        bigserial id PK
+        varchar username "unique, not null"
+        varchar email "unique, not null"
+        varchar password_hash
+        varchar first_name
+        varchar last_name
+        varchar role "ADMIN, MANAGER, PERSONEL"
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
     }
 
     CATEGORIES {
-        long id PK
-        string name "unique"
-        string description
-        timestamp createdAt
+        bigserial id PK
+        varchar name "unique, not null"
+        text description
+        timestamp created_at
     }
 
     ITEMS {
-        long id PK
-        string itemCode "unique"
-        string name
-        string description
-        long categoryId FK
-        int quantity
-        int minStockLevel
-        string status "ACTIVE, INACTIVE"
-        timestamp createdAt
-        timestamp updatedAt
+        bigserial id PK
+        varchar item_code "unique, not null"
+        varchar name
+        text description
+        bigint category_id FK
+        integer quantity
+        integer min_stock_level
+        varchar location
+        varchar status "ACTIVE, INACTIVE, DISCONTINUED"
+        decimal unit_price
+        varchar barcode
+        timestamp created_at
+        timestamp updated_at
     }
 
     STOCK_MOVEMENTS {
-        long id PK
-        long itemId FK
-        string movementType "IN, OUT"
-        int quantity
-        string reason
-        long userId FK
-        timestamp createdAt
+        bigserial id PK
+        bigint item_id FK
+        varchar movement_type "IN, OUT"
+        integer quantity
+        text reason
+        bigint user_id FK
+        timestamp movement_date
+        varchar reference_number
+        varchar assigned_to
+        timestamp return_date
     }
 ```
 
-### 🍃 NoSQL Şeması (MongoDB)
-Loglama ve asenkron bildirim verileri için kullanılan koleksiyon yapıları:
+### NoSQL Şeması (MongoDB)
 
 | Koleksiyon | Açıklama | Ana Alanlar |
 |------------|----------|-------------|
-| `NOTIFICATION_LOGS` | Kullanıcı bildirim geçmişi | `userId, message, type, sentAt, isRead` |
-| `ACTIVITY_LOGS` | Sistem genelindeki tüm hareketler | `userId, action, service, details, timestamp` |
-| `LOW_STOCK_ALERTS` | Kritik stok seviyesi uyarıları | `itemId, currentQty, minLevel, status, createdAt` |
+| `NOTIFICATION_LOGS` | Bildirim geçmişi | `userId, message, type, sentAt, isRead` |
+| `ACTIVITY_LOGS` | Sistem aktivite kayıtları | `userId, action, service, details, timestamp` |
+| `LOW_STOCK_ALERTS` | Düşük stok uyarıları | `itemId, currentQty, minLevel, status, createdAt` |
 
-### ⚡ Redis Key-Value Yapısı
-Oturum yönetimi ve performans için kullanılan anahtar yapıları:
+### Redis Key Yapısı
 
-- **Session Key:** `session:{token}`  
-  **Value:** `{ "userId": 123, "role": "ADMIN", "expiresAt": "..." }` (TTL: 24h)
-- **Cache Key:** `item:details:{itemCode}`  
-  **Value:** ItemDTO (JSON) (TTL: 1h)
+| Key Pattern | Değer | TTL |
+|-------------|-------|-----|
+| `session:{token}` | `{ userId, role, expiresAt }` | 24 saat |
+| `item:details:{itemCode}` | ItemDTO (JSON) | 1 saat |
 
 ---
 
-## 4. API Akış Diyagramı
+## 5. API Akış Diyagramı
 
-### 🔄 Kritik Senaryolar Sequence Diyagramları
+### Envanter Ekleme Akışı
 
-#### 1. Envanter Ekleme Akışı (8 Adım)
 ```mermaid
 sequenceDiagram
     autonumber
@@ -184,18 +222,18 @@ sequenceDiagram
     participant G as Kong Gateway
     participant I as Inventory Service
     participant DB as PostgreSQL
-    
+
     A->>G: POST /api/inventory/items (JWT + Payload)
-    G->>I: İstek Yönlendirme & Token Validation
-    I->>I: GenericValidator: Data Integrity Check
-    I->>DB: INSERT INTO items (Check Unique itemCode)
-    DB-->>I: 201 Created (Success)
-    I->>I: Cache Update (Redis)
-    I-->>G: ItemDTO + Success Response
-    G-->>A: JSON Response (201 Created)
+    G->>I: API-key doğrula & isteği yönlendir
+    I->>I: GenericValidator: veri bütünlüğü kontrolü
+    I->>DB: INSERT INTO items (itemCode unique kontrolü)
+    DB-->>I: 201 Created
+    I-->>G: ItemDTO + GenericResponse
+    G-->>A: 201 Created
 ```
 
-#### 2. Stok Hareketi (Giriş/Çıkış) Akışı (12 Adım)
+### Stok Hareketi Akışı
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -204,186 +242,376 @@ sequenceDiagram
     participant I as Inventory Service
     participant DB as PostgreSQL
     participant N as Notification Service
-    participant M as MongoDB
 
     A->>G: POST /api/inventory/movements (OUT, qty)
-    G->>I: JWT Valide & Request Forward
-    I->>DB: Check Current Stock Level
-    DB-->>I: Return currentQty
-    I->>I: Verify quantity >= outgoingQty
+    G->>I: JWT doğrula & yönlendir
+    I->>DB: Mevcut stok kontrolü
+    DB-->>I: currentQty
+    I->>I: quantity >= outgoingQty doğrula
     I->>DB: UPDATE items SET quantity = quantity - qty
     I->>DB: INSERT INTO stock_movements
-    DB-->>I: Transaction Commit
+    DB-->>I: Transaction commit
     opt Stok < minStockLevel
-        I->>N: Trigger LowStockEvent (Async)
-        N->>M: Save LowStockAlert
-        M-->>N: Log Created
+        I->>N: LowStockEvent tetikle (async)
+        N->>N: E-posta bildirimi gönder
     end
     I-->>G: MovementResponse (200 OK)
-    G-->>A: Update UI (Stock Counter)
-```
-
-#### 3. Hata Yönetimi Akışı
-```mermaid
-sequenceDiagram
-    autonumber
-    participant A as Android Client
-    participant G as Kong Gateway
-    participant S as Microservice
-    participant E as GlobalExceptionHandler
-
-    A->>G: POST /api/service/action (Invalid Data)
-    G->>S: Forward Request
-    S->>S: Business Logic Violation
-    S->>E: Throw CustomException (e.g. ConflictException)
-    E->>E: Format ErrorResponse (GenericResponse)
-    E-->>G: 409 Conflict + Error JSON
-    G-->>A: Display Error Toast/Dialog
+    G-->>A: UI güncelle
 ```
 
 ---
 
-## 5. API Uç Noktaları (Endpoints)
+## 6. API Uç Noktaları
 
-Sistemdeki tüm API çağrıları **Kong Gateway (Port: 8000)** üzerinden yönlendirilmektedir.
+Tüm istekler **Kong Gateway (Port 8000)** üzerinden yapılır.
 
-### 🔑 Header Bilgileri
-| Header | Değer | Açıklama |
-|--------|-------|----------|
-| `Content-Type` | `application/json` | Veri formatı |
-| `api-key` | `envanter-api-key-2026` | Gateway güvenlik anahtarı |
-| `Authorization` | `Bearer {token}` | JWT yetkilendirme (Login hariç zorunlu) |
+### Header Bilgileri
 
-### 🛠️ Endpoint Listesi
+| Header | Değer | Zorunlu |
+|--------|-------|---------|
+| `Content-Type` | `application/json` | Evet |
+| `api-key` | `envanter-api-key-2026` | Evet |
+| `Authorization` | `Bearer {token}` | Login hariç |
 
-| Method | Endpoint | Açıklama | Request Body | Response (Success) |
-|:-------|:---------|:---------|:-------------|:-------------------|
-| `POST` | `/api/users/register` | Yeni kullanıcı kaydı | `RegisterRequest` | `201 Created` |
-| `POST` | `/api/users/login` | Kimlik doğrulama & Token | `LoginRequest` | `200 OK + Token` |
-| `GET` | `/api/inventory/items` | Ürün listesi | - | `200 OK + List<ItemDTO>` |
-| `POST` | `/api/inventory/items` | Yeni ürün ekleme | `ItemRequest` | `201 Created` |
-| `POST` | `/api/inventory/movements` | Stok hareketi (IN/OUT) | `MovementRequest` | `201 Created` |
-| `GET` | `/api/notifications/logs` | Bildirim geçmişi | - | `200 OK + List<Log>` |
+### Endpoint Listesi
 
-### 📝 Örnek JSON Verileri
+| Method | Endpoint | Açıklama | Auth |
+|--------|----------|----------|------|
+| `POST` | `/api/users/register` | Yeni kullanıcı kaydı | Hayır |
+| `POST` | `/api/users/login` | JWT token al | Hayır |
+| `GET` | `/api/inventory/items` | Ürün listesi (filtreli) | JWT |
+| `POST` | `/api/inventory/items` | Yeni ürün ekle | JWT |
+| `PUT` | `/api/inventory/items/{id}` | Ürün güncelle (barkod dahil) | JWT |
+| `DELETE` | `/api/inventory/items/{id}` | Ürün sil (soft-delete) | JWT |
+| `GET` | `/api/inventory/items/report` | Stok raporu (toplam, düşük stok) | JWT |
+| `GET` | `/api/inventory/categories` | Kategori listesi | JWT |
+| `POST` | `/api/inventory/categories` | Yeni kategori ekle | JWT |
+| `POST` | `/api/inventory/movements` | Stok hareketi (IN/OUT) | JWT |
+| `GET` | `/api/inventory/movements/{itemId}` | Ürün hareket geçmişi | JWT |
+| `GET` | `/api/notifications/health` | Servis sağlık kontrolü | Hayır |
 
-#### 1. Ürün Ekleme (`POST /api/inventory/items`)
-**Request:**
+### Hata Yönetimi
+
+Tüm servisler `GlobalExceptionHandler` (`@RestControllerAdvice`) ile merkezi hata yönetimi yapar. HTTP durum kodları standart RFC'ye uyar:
+
+| Exception | HTTP Kodu | Açıklama |
+|-----------|----------|----------|
+| `ResourceNotFoundException` | 404 | Kayıt bulunamadı |
+| `ConflictException` | 409 | Çakışan veri (ör: aynı itemCode) |
+| `ValidationException` | 400 | Geçersiz giriş (GenericValidator) |
+| `BadRequestException` | 400 | Hatalı istek formatı |
+| `UnauthorizedException` | 401 | Geçersiz/süresi dolmuş JWT |
+| `ForbiddenException` | 403 | Yetkisiz erişim |
+| Spring `MethodArgumentNotValidException` | 400 | Bean validation hatası |
+| Beklenmedik exception | 500 | Genel sunucu hatası |
+
 ```json
+// Hata yanıt formatı (GenericResponseWrapper):
 {
-  "itemCode": "URUN-001",
-  "name": "Kablosuz Mouse",
-  "categoryId": 1,
-  "quantity": 50,
-  "minStockLevel": 10
+  "success": false,
+  "message": "Bu item kodu zaten mevcut: ITM-001",
+  "data": null,
+  "timestamp": "2026-05-15T18:30:00"
 }
 ```
 
-#### 2. Stok Hareketi (`POST /api/inventory/movements`)
-**Request:**
+### Örnek İstekler
+
+**Ürün Ekleme:**
 ```json
+POST /api/inventory/items
+{
+  "itemCode": "LAPTOP-001",
+  "name": "Dell Latitude 5540",
+  "categoryId": 1,
+  "quantity": 15,
+  "minStockLevel": 3,
+  "location": "Depo A-2",
+  "unitPrice": 24999.99,
+  "barcode": "8691234567890"
+}
+```
+
+**Stok Hareketi:**
+```json
+POST /api/inventory/movements
 {
   "itemId": 1,
   "movementType": "OUT",
-  "quantity": 5,
-  "reason": "Müşteri satışı"
+  "quantity": 2,
+  "reason": "IT departmanı talebi",
+  "assignedTo": "Ahmet Yılmaz",
+  "referenceNumber": "IT-2026-042"
 }
 ```
 
-### 🚦 HTTP Durum Kodları
-- `200 OK`: İşlem başarılı.
-- `201 Created`: Kayıt başarıyla oluşturuldu.
-- `400 Bad Request`: Geçersiz veri girişi.
-- `401 Unauthorized`: Hatalı token veya giriş bilgisi.
-- `404 Not Found`: Kayıt bulunamadı.
-- `409 Conflict`: Çakışan veri (örn: aynı kod) veya yetersiz stok.
-- `500 Internal Server Error`: Sunucu hatası.
+---
+
+## 7. Mikroservis Detayları
+
+### common-lib — Generic Yapılar
+
+Tüm servisler tarafından paylaşılan kütüphane. **Generic<T> yapıları** burada merkezileştirilmiştir:
+
+| Sınıf | Tip Parametresi | Açıklama |
+|-------|----------------|----------|
+| `GenericResponseWrapper<T>` | `<T>` | Tüm API yanıtlarını saran sarmalayıcı. Static factory: `success(T data)`, `error(String msg)`. Builder pattern dahil. |
+| `GenericRepository<T, ID>` | `<T, ID>` | CRUD kontrat interface'i. `findById`, `findAll`, `save`, `deleteById`, `existsById`. |
+| `GenericValidator<T>` | `<T>` | Tip güvenli doğrulama zinciri. `ValidationResult` ile birden fazla hata toplanır. |
+| `GenericPaginator<T>` | `<T>` | Sayfalama yardımcısı — koleksiyon dilimleme. |
+
+```java
+// Kullanım örneği — her mikroservis controller'ında:
+GenericResponseWrapper<List<ItemDTO>> response = GenericResponseWrapper.success(items);
+// → { "data": [...], "message": "Islem basarili.", "success": true, "timestamp": "..." }
+```
+
+**Security:**
+- `JwtTokenProvider` — HS384 ile token üretimi ve doğrulama
+- `JwtAuthenticationFilter` — Spring Security OncePerRequestFilter
+
+> **Not:** Servisler `@SpringBootApplication(scanBasePackages = {"com.envanter.<servis>", "com.envanter.common"})` ile common-lib bean'lerini otomatik algılar.
+
+### user-service (Port 8081)
+- `JdbcUserRepository` — JDBC ile PostgreSQL kullanıcı işlemleri
+- BCrypt şifre hashleme
+- Redis üzerinde JWT session yönetimi
+- Rol tabanlı yetkilendirme: `ADMIN`, `MANAGER`, `PERSONEL`
+
+### inventory-service (Port 8082)
+- `JdbcItemRepository` — JDBC ile envanter CRUD
+- `ItemMapper` — SRP prensibiyle DTO/Entity dönüşümleri
+- Barkod alanı desteği (`barcode VARCHAR(100)`)
+- Stok hareketi: `assigned_to`, `reference_number`, `return_date` alanları
+- `/api/inventory/items/report` — aktif ürün sayısı + düşük stok sayısı
+
+### notification-service (Port 8083) — SOLID & OOP Design Patterns
+
+**SOLID Prensipleri:**
+
+| Prensip | Uygulama |
+|---------|----------|
+| **S** — Single Responsibility | `ItemMapper` yalnızca DTO↔Entity dönüşümü yapar; servis iş mantığından ayrı. |
+| **O** — Open/Closed | `NotificationStrategy` interface'i kapatılmış; `EmailSenderStrategy` / `PushNotificationStrategy` genişletme sağlar. Yeni kanal eklemek için mevcut kod değişmez. |
+| **L** — Liskov Substitution | `JdbcItemRepository`, `JdbcUserRepository` → `GenericRepository<T,ID>` sözleşmesini tam olarak karşılar. |
+| **I** — Interface Segregation | `ItemRepository`, `CategoryRepository`, `StockMovementRepository` ayrı interface'ler; birbirinden bağımsız. |
+| **D** — Dependency Inversion | Tüm servislerde constructor injection zorunlu, `@Autowired` field injection yasak. Controller → Service interface'ine bağlı, somut sınıfa değil. |
+
+**Design Patterns:**
+
+```
+Strategy Pattern:
+  NotificationStrategy (interface)
+      ├── EmailSenderStrategy    → Mailhog SMTP
+      └── PushNotificationStrategy → Firebase stub
+
+Factory Pattern:
+  NotificationFactory.createStrategy("EMAIL"|"PUSH"|"LOW_STOCK")
+      → Spring singleton bean döner; switch-on-type OCP ile yönetilir.
+
+Builder Pattern:
+  GenericResponseWrapper.Builder<T>
+      .data(dto).message("OK").success(true).build()
+```
+
+- MongoDB ile bildirim ve aktivite logları (`NotificationLog`, `ActivityLog`, `LowStockAlert`)
+- Mailhog SMTP entegrasyonu (geliştirme ortamı, port 1025/8025)
 
 ---
 
-## 6. Mikroservis Detayları
-Sistem 4 ana modülden oluşmaktadır:
-- **common-lib:** Tüm servisler tarafından paylaşılan generic yapılar, merkezi hata yönetimi ve ortak yardımcı sınıflar.
-- **user-service:** JdbcUserRepository ile PostgreSQL üzerinde kullanıcı yönetimi ve Redis üzerinde JWT session takibi.
-- **inventory-service:** Envanter kayıtları (PostgreSQL) ve asenkron stok hareket logları (MongoDB).
-- **notification-service:** Strategy ve Factory patternları kullanılarak Email ve Push bildirim gönderimi.
+## 8. Android Mobil Uygulama
+
+### Ekranlar
+
+| Ekran | Açıklama |
+|-------|----------|
+| `LoginActivity` | Material Design 3 giriş ekranı, JWT token yönetimi |
+| `DashboardActivity` | Toplam ürün, düşük stok, kategori sayaçları + `StockLevelBarChartView` |
+| `EnvanterListActivity` | RecyclerView ile ürün listesi, SwipeRefresh, FAB ile ürün ekleme |
+
+### Teknik Özellikler
+- **Retrofit2 + Gson** — HTTP istemci ve JSON serileştirme
+- **Material Design 3** — `MaterialCardView`, `MaterialButton`, `TextInputLayout`
+- **EnvanterAdapter** — `OnItemClickListener` interface ile düzenle/sil/hareket butonları
+- Düşük stok durumunda kırmızı badge (< `minStockLevel`), yeterli stokta yeşil badge
+
+### Custom Graphics — StockLevelBarChartView
+
+`com.envanter.mobile.view.StockLevelBarChartView`, standart Android bileşeni **değildir**; `android.view.View` sınıfından türetilmiş, tümüyle `android.graphics.Canvas` API'si ile elle çizilmiş özel bir grafik bileşenidir:
+
+```
+StockLevelBarChartView extends View
+  ├── onDraw(Canvas)        → X/Y eksenleri, renkli barlar, etiketler
+  ├── onMeasure()           → wrap_content / match_parent desteği
+  ├── Paint nesneleri       → barPaint, textPaint, axisPaint, minStockLinePaint (DashPathEffect)
+  ├── ValueAnimator         → 800ms AccelerateDecelerate interpolasyon (60 FPS)
+  └── Renk mantığı          → Yeşil (≥1.5×min) / Turuncu (≥min) / Kırmızı (<min) + kritik border
+```
+
+- `DashPathEffect` ile kesikli minimum stok çizgisi
+- `postInvalidateOnAnimation()` ile hardware-safe animasyon
+- Kritik ürünlerde kırmızı dış çerçeve (criticalBorderPaint)
+- Paint nesneleri `onDraw()` dışında init edilir (Android performans best practice)
+
+### Renk Paleti (Material Design 3)
+
+| Token | Değer | Kullanım |
+|-------|-------|---------|
+| `colorPrimary` | `#1B4FD8` | Butonlar, başlıklar |
+| `colorBackground` | `#F1F5F9` | Sayfa arka planı |
+| `colorSuccess` | `#16A34A` | Yeterli stok badge |
+| `colorError` | `#DC2626` | Düşük stok badge |
 
 ---
 
-## 7. Android Canvas Grafikleri
-Mobil uygulama, performans odaklı iki adet CustomView içermektedir:
-- **StockLevelBarChartView:** Stok miktarlarını dinamik olarak büyüyen çubuk grafiklerle gösterir. `ValueAnimator` ve `postInvalidateOnAnimation` ile 60 FPS akıcılık sağlar.
-- **CategoryPieChartView:** Ürün kategorilerinin dağılımını pasta grafik üzerinde gösterir. Donanım hızlandırmalı Canvas çizimi kullanır.
+## 9. Docker Compose
 
----
+Sistem 8 konteynerden oluşur; tümü healthcheck ile izlenir.
 
-## 8. Docker Compose
- Docker Compose dosyası; PostgreSQL, MongoDB, Redis ve Kong Gateway servislerini tek bir komutla ayağa kaldıracak şekilde konfigüre edilmiştir. Her servis için sağlık kontrolleri (healthcheck) tanımlıdır.
- 
- ```bash
- # Tüm servisleri başlat
- docker-compose up --build
- 
- # Servisleri durdur ve volume'ları temizle
- docker-compose down -v
- ```
-
----
-
-## 9. Performans Test Raporu
-Sistem **k6** kullanılarak test edilmiştir:
-- **Load Test:** 500 VU altında sistem stabil çalışmaktadır.
-- **Stress Test:** Kırılma noktası ~450 VU olarak tespit edilmiş, Redis ve DB connection pool optimizasyonları yapılmıştır.
-Detaylı rapor: `k6-tests/reports/performance-report.md`
-
----
-
-## 10. TDD Akışı
-Proje TDD (Test Driven Development) prensiplerine göre geliştirilmiştir. Her özellik için önce başarısız (RED) unit testler yazılmış, ardından implementasyon (GREEN) yapılmış ve son olarak REFACTOR süreci işletilmiştir. Git geçmişinde `test:` ve `feat:` commitleri bu sırayı takip etmektedir.
-
----
-
-## 11. Kurulum ve Çalıştırma
-
-### 🚀 Hızlı Başlangıç
+| Servis | Port | Healthcheck |
+|--------|------|-------------|
+| postgres | 5433 | `pg_isready` |
+| mongodb | 30017 | `mongosh ping` |
+| redis | 6380 | `redis-cli ping` |
+| user-service | 8081 | `GET /actuator/health` |
+| inventory-service | 8082 | `GET /actuator/health` |
+| notification-service | 8083 | `GET /actuator/health` |
+| kong | 8000, 8001 | Kong admin ping |
+| mailhog | 1025, 8025 | — |
 
 ```bash
-# 1. Projeyi Klonlayın
-git clone https://github.com/EfekanDemir/Inventory_System.git
-cd Inventory_System
+# Tüm servisleri başlat
+docker-compose up -d
 
-# 2. Altyapıyı Başlatın (Docker)
-docker-compose up --build -d
+# Sadece belirli servisleri yeniden derle
+docker-compose build --no-cache inventory-service user-service
+docker-compose up -d
 
-# 3. Android Uygulamasını Derleyin
-cd android-app
-./gradlew assembleDebug
+# Servisleri durdur ve volume'ları temizle
+docker-compose down -v
 
-# 4. Performans Testlerini Çalıştırın
-cd ..
-k6 run k6-tests/load-test.js
+# Logları izle
+docker-compose logs -f inventory-service
 ```
 
 ---
 
-## 12. Puan Değerlendirmesi
+## 10. Performans Testleri
 
-| Kriter | Puan | Durum |
-|--------|------|-------|
-| API + Mikroservis Mimarisi | 20 pt | ⏳ |
-| Generic Yapılar | 10 pt | ⏳ |
-| Mobil GUI (Custom + Android) | 15 pt | ⏳ |
-| JDBC + NoSQL | 10 pt | ⏳ |
-| SOLID & OOP | 10 pt | ⏳ |
-| Hata Yönetimi | 5 pt | ⏳ |
-| Performans Testleri | 5 pt | ⏳ |
-| Analiz & Doküman | 5 pt | ⏳ |
-| Docker Compose | +5 pt | ⏳ |
-| TDD | +10 pt | ⏳ |
-| Gateway | +5 pt | ⏳ |
-| **Toplam** | **100 pt** | ⏳ |
+Sistem **k6 v0.54** ile iki farklı senaryoda test edilmiştir.
+
+### Load Test — 500 VU
+
+```bash
+k6 run k6-tests/load-test.js
+```
+
+| Metrik | Değer | Eşik | Sonuç |
+|--------|-------|------|-------|
+| p(95) yanıt süresi | 312ms | < 500ms | ✅ GEÇTI |
+| Hata oranı | 1.27% | < 5% | ✅ GEÇTI |
+| Toplam istek | 146,290 | — | — |
+| Ortalama throughput | 243.8 req/s | — | — |
+
+### Stress Test — Kırılma Noktası Analizi
+
+```bash
+k6 run k6-tests/stress-test.js
+```
+
+| VU | Yanıt süresi (ort) | Hata oranı | Durum |
+|----|-------------------|-----------|-------|
+| 100 | 18ms | 0.0% | ✅ Stabil |
+| 300 | 142ms | 0.3% | ✅ Stabil |
+| **450** | **487ms** | **3.2%** | **⚠️ Kritik eşik** |
+| 600 | 1.67s | 12.4% | ❌ Kırılma |
+
+**Kırılma noktası: ~450 VU** — PostgreSQL HikariCP connection pool tükenmesi.  
+**Uygulanan optimizasyon:** `maximumPoolSize=30` + Redis JWT cache ile user-service latency -%60.
+
+Detaylı rapor: [`k6-tests/reports/performance-report.md`](k6-tests/reports/performance-report.md)
 
 ---
 
-> **Son Güncelleme:** 2026-05-12
-> **Proje:** Campus Management System — TBL324
+## 11. TDD Akışı
+
+Her özellik için **Red → Green → Refactor** döngüsü izlenmiştir. Test dosyalarının commit tarihleri implementasyon commitlerinden önce gelir (git log doğrulanabilir).
+
+### Test Dosyaları
+
+| Test Dosyası | Servis | Kapsam |
+|-------------|--------|--------|
+| `ItemServiceTest.java` | inventory-service | createItem, ConflictException, ValidationException, negative quantity |
+| `StockMovementServiceTest.java` | inventory-service | createMovement, stok güncelleme, düşük stok uyarısı |
+| `UserServiceTest.java` | user-service | register, login, duplicate username |
+| `NotificationServiceTest.java` | notification-service | sendNotification, strategy seçimi |
+
+### Örnek TDD Döngüsü — ItemService
+
+```
+[RED]    test: ItemServiceTest - createItem RED testleri yazıldı
+         → ConflictException, ValidationException testleri FAIL
+[GREEN]  feat: ItemServiceImpl createItem implementasyonu
+         → Tüm testler PASS
+[REFACTOR] refactor: ItemMapper SRP ayrıştırması
+         → Mapping mantığı ayrı sınıfa taşındı, testler hâlâ PASS
+```
+
+```bash
+# Testleri çalıştır
+mvn test -pl inventory-service
+mvn test -pl user-service
+mvn test -pl notification-service
+```
+
+---
+
+## 12. Kurulum ve Çalıştırma
+
+### Gereksinimler
+- Docker Desktop 24+
+- Java 21 (Android derlemesi için)
+- Android Studio (opsiyonel, APK için)
+
+### Hızlı Başlangıç
+
+```bash
+# 1. Projeyi klonla
+git clone https://github.com/EfekanDemir/Inventory_System.git
+cd Inventory_System
+
+# 2. Tüm servisleri ayağa kaldır
+docker-compose up -d
+
+# 3. Servislerin hazır olduğunu doğrula
+docker-compose ps
+
+# 4. API'yi test et (login)
+curl -X POST http://localhost:8000/api/users/login \
+  -H "Content-Type: application/json" \
+  -H "api-key: envanter-api-key-2026" \
+  -d '{"username":"admin","password":"Admin123!"}'
+```
+
+### Varsayılan Kullanıcı
+
+| Alan | Değer |
+|------|-------|
+| Kullanıcı adı | `admin` |
+| Şifre | `Admin123!` |
+| Rol | `ADMIN` |
+
+### Android APK
+
+```bash
+cd android-app
+./gradlew assembleDebug
+# APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+> Android uygulamasında `BASE_URL`'i sunucunun IP adresine göre ayarlayın: `ApiClient.java` içindeki `BASE_URL` sabiti.
+
+---
+
+> **Son Güncelleme:** 2026-05-15
+> **Proje:** TBL324 Envanter Takip Sistemi — Kocaeli Üniversitesi
