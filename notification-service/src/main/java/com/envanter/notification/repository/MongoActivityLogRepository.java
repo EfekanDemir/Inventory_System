@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.lang.NonNull;
 
 /**
  * ActivityLog için MongoTemplate tabanlı repository.
@@ -28,14 +29,14 @@ public class MongoActivityLogRepository {
 
     // -- CRUD -----------------------------------------------------------------
 
-    public ActivityLog save(ActivityLog activityLog) {
+    public ActivityLog save(@NonNull ActivityLog activityLog) {
         if (activityLog.getTimestamp() == null) {
             activityLog.setTimestamp(LocalDateTime.now());
         }
         return mongoTemplate.save(activityLog);
     }
 
-    public Optional<ActivityLog> findById(String id) {
+    public Optional<ActivityLog> findById(@NonNull String id) {
         return Optional.ofNullable(mongoTemplate.findById(id, ActivityLog.class));
     }
 
@@ -45,7 +46,7 @@ public class MongoActivityLogRepository {
         return mongoTemplate.find(query, ActivityLog.class);
     }
 
-    public void deleteById(String id) {
+    public void deleteById(@NonNull String id) {
         Query query = Query.query(Criteria.where("_id").is(id));
         mongoTemplate.remove(query, ActivityLog.class);
     }
@@ -56,7 +57,7 @@ public class MongoActivityLogRepository {
      * Belirli bir servise ait logları getirir.
      * Örnek: "inventory-service"
      */
-    public List<ActivityLog> findByServiceName(String serviceName) {
+    public List<ActivityLog> findByServiceName(@NonNull String serviceName) {
         Query query = Query.query(Criteria.where("service_name").is(serviceName))
                 .with(Sort.by(Sort.Direction.DESC, "timestamp"));
         return mongoTemplate.find(query, ActivityLog.class);
@@ -65,7 +66,7 @@ public class MongoActivityLogRepository {
     /**
      * Belirli bir kullanıcının aktivitelerini getirir.
      */
-    public List<ActivityLog> findByUserId(String userId) {
+    public List<ActivityLog> findByUserId(@NonNull String userId) {
         Query query = Query.query(Criteria.where("user_id").is(userId))
                 .with(Sort.by(Sort.Direction.DESC, "timestamp"));
         return mongoTemplate.find(query, ActivityLog.class);
@@ -75,7 +76,7 @@ public class MongoActivityLogRepository {
      * İşlem tipine göre filtreler.
      * Örnek: "CREATE_ITEM", "STOCK_MOVEMENT"
      */
-    public List<ActivityLog> findByAction(String action) {
+    public List<ActivityLog> findByAction(@NonNull String action) {
         Query query = Query.query(Criteria.where("action").is(action))
                 .with(Sort.by(Sort.Direction.DESC, "timestamp"));
         return mongoTemplate.find(query, ActivityLog.class);
@@ -95,7 +96,7 @@ public class MongoActivityLogRepository {
     /**
      * Belirli tarih aralığındaki aktiviteleri getirir.
      */
-    public List<ActivityLog> findByTimestampBetween(LocalDateTime from, LocalDateTime to) {
+    public List<ActivityLog> findByTimestampBetween(@NonNull LocalDateTime from, @NonNull LocalDateTime to) {
         Query query = Query.query(
                 Criteria.where("timestamp").gte(from).lte(to)
         ).with(Sort.by(Sort.Direction.DESC, "timestamp"));

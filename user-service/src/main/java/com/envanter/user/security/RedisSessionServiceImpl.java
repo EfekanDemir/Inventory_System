@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.Optional;
+import org.springframework.lang.NonNull;
 
 @Service
 public class RedisSessionServiceImpl implements RedisSessionService {
@@ -16,12 +17,12 @@ public class RedisSessionServiceImpl implements RedisSessionService {
     }
 
     @Override
-    public void createSession(String token, Long userId, Duration expiry) {
+    public void createSession(@NonNull String token, @NonNull Long userId, @NonNull Duration expiry) {
         redisTemplate.opsForValue().set(token, userId, expiry);
     }
 
     @Override
-    public Optional<SessionData> getSession(String token) {
+    public Optional<SessionData> getSession(@NonNull String token) {
         Object val = redisTemplate.opsForValue().get(token);
         if (val == null) return Optional.empty();
         
@@ -38,7 +39,7 @@ public class RedisSessionServiceImpl implements RedisSessionService {
     }
 
     @Override
-    public void deleteSession(String token) {
+    public void deleteSession(@NonNull String token) {
         redisTemplate.delete(token);
     }
 }

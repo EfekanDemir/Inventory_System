@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.lang.NonNull;
 
 /**
  * LowStockAlert için MongoTemplate tabanlı repository implementasyonu.
@@ -27,7 +28,7 @@ public class MongoLowStockAlertRepository implements LowStockAlertRepository {
     // -- LowStockAlertRepository impl -----------------------------------------
 
     @Override
-    public LowStockAlert save(LowStockAlert alert) {
+    public LowStockAlert save(@NonNull LowStockAlert alert) {
         return mongoTemplate.save(alert);
     }
 
@@ -39,14 +40,14 @@ public class MongoLowStockAlertRepository implements LowStockAlertRepository {
     }
 
     @Override
-    public List<LowStockAlert> findByItemId(String itemId) {
+    public List<LowStockAlert> findByItemId(@NonNull String itemId) {
         Query query = Query.query(Criteria.where("item_id").is(itemId))
                 .with(Sort.by(Sort.Direction.DESC, "created_at"));
         return mongoTemplate.find(query, LowStockAlert.class);
     }
 
     @Override
-    public List<LowStockAlert> findByAlertStatus(String status) {
+    public List<LowStockAlert> findByAlertStatus(@NonNull String status) {
         Query query = Query.query(Criteria.where("alert_status").is(status))
                 .with(Sort.by(Sort.Direction.DESC, "created_at"));
         return mongoTemplate.find(query, LowStockAlert.class);
@@ -57,14 +58,14 @@ public class MongoLowStockAlertRepository implements LowStockAlertRepository {
     /**
      * ID'ye göre tek uyarı getirir.
      */
-    public Optional<LowStockAlert> findById(String id) {
+    public Optional<LowStockAlert> findById(@NonNull String id) {
         return Optional.ofNullable(mongoTemplate.findById(id, LowStockAlert.class));
     }
 
     /**
      * Belirli bir item'in aktif uyarılarını getirir.
      */
-    public List<LowStockAlert> findActiveByItemId(String itemId) {
+    public List<LowStockAlert> findActiveByItemId(@NonNull String itemId) {
         Query query = Query.query(
                 Criteria.where("item_id").is(itemId)
                         .and("alert_status").is("ACTIVE")
@@ -82,7 +83,7 @@ public class MongoLowStockAlertRepository implements LowStockAlertRepository {
     /**
      * ID'ye göre uyarıyı siler.
      */
-    public void deleteById(String id) {
+    public void deleteById(@NonNull String id) {
         Query query = Query.query(Criteria.where("_id").is(id));
         mongoTemplate.remove(query, LowStockAlert.class);
     }
@@ -90,7 +91,7 @@ public class MongoLowStockAlertRepository implements LowStockAlertRepository {
     /**
      * ID'ye göre kayıt var mı?
      */
-    public boolean existsById(String id) {
+    public boolean existsById(@NonNull String id) {
         Query query = Query.query(Criteria.where("_id").is(id));
         return mongoTemplate.exists(query, LowStockAlert.class);
     }

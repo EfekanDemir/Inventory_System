@@ -1,15 +1,15 @@
 package com.envanter.user.service;
 
+import com.envanter.common.security.JwtTokenProvider;
 import com.envanter.user.dto.LoginRequest;
-import com.envanter.user.dto.LoginResponse;
+
 import com.envanter.user.dto.RegisterRequest;
 import com.envanter.user.dto.UserDTO;
 import com.envanter.user.exception.ConflictException;
 import com.envanter.user.exception.UnauthorizedException;
-import com.envanter.user.model.Role;
+
 import com.envanter.user.model.User;
 import com.envanter.user.repository.UserRepository;
-import com.envanter.user.security.JwtTokenProvider;
 import com.envanter.user.security.RedisSessionService;
 import com.envanter.user.util.UserMapper;
 import com.envanter.user.util.UserValidator;
@@ -112,7 +112,8 @@ public class UserServiceImpl implements UserService {
         }
 
         // 4) JWT token üretimi
-        String token = jwtTokenProvider.generateToken(user);
+        String roleName = user.getRole() != null ? user.getRole().name() : "USER";
+        String token = jwtTokenProvider.generateToken(user.getId(), user.getEmail(), roleName);
 
         // 5) Redis'e oturum kaydet — RedisSessionService'e delege edildi (SRP)
         redisSessionService.createSession(token, user.getId(), Duration.ofHours(24));

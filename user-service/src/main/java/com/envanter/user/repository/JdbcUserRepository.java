@@ -5,6 +5,7 @@ import com.envanter.user.model.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.lang.NonNull;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,13 +34,12 @@ public class JdbcUserRepository implements UserRepository, GenericRepository<Use
                     Role.valueOf(rs.getString("role")),
                     rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null,
                     rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null,
-                    rs.getBoolean("is_active")
-            );
+                    rs.getBoolean("is_active"));
         }
     };
 
     @Override
-    public Optional<User> findById(Long id) {
+    public Optional<User> findById(@NonNull Long id) {
         String sql = "SELECT * FROM users WHERE id = ?";
         List<User> results = jdbcTemplate.query(sql, userRowMapper, id);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
@@ -80,40 +80,43 @@ public class JdbcUserRepository implements UserRepository, GenericRepository<Use
     }
 
     @Override
-    public User save(User entity) {
+    public User save(@NonNull User entity) {
         if (entity.getId() == null) {
             // Insert
-            String sql = "INSERT INTO users (username, email, password_hash, first_name, last_name, role, is_active, created_at, updated_at) " +
+            String sql = "INSERT INTO users (username, email, password_hash, first_name, last_name, role, is_active, created_at, updated_at) "
+                    +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) RETURNING id, created_at, updated_at";
-            
+
             return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 entity.setId(rs.getLong("id"));
                 entity.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
                 entity.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
                 return entity;
-            }, entity.getUsername(), entity.getEmail(), entity.getPasswordHash(), 
-               entity.getFirstName(), entity.getLastName(), entity.getRole().name(), entity.isActive());
+            }, entity.getUsername(), entity.getEmail(), entity.getPasswordHash(),
+                    entity.getFirstName(), entity.getLastName(), entity.getRole().name(), entity.isActive());
         } else {
             // Update
-            String sql = "UPDATE users SET username=?, email=?, password_hash=?, first_name=?, last_name=?, role=?, is_active=?, updated_at=NOW() " +
+            String sql = "UPDATE users SET username=?, email=?, password_hash=?, first_name=?, last_name=?, role=?, is_active=?, updated_at=NOW() "
+                    +
                     "WHERE id=? RETURNING updated_at";
-            
+
             return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 entity.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
                 return entity;
-            }, entity.getUsername(), entity.getEmail(), entity.getPasswordHash(), 
-               entity.getFirstName(), entity.getLastName(), entity.getRole().name(), entity.isActive(), entity.getId());
+            }, entity.getUsername(), entity.getEmail(), entity.getPasswordHash(),
+                    entity.getFirstName(), entity.getLastName(), entity.getRole().name(), entity.isActive(),
+                    entity.getId());
         }
     }
 
     @Override
-    public void deleteById(Long id) {
+    public void deleteById(@NonNull Long id) {
         String sql = "DELETE FROM users WHERE id = ?";
         jdbcTemplate.update(sql, id);
     }
 
     @Override
-    public boolean existsById(Long id) {
+    public boolean existsById(@NonNull Long id) {
         String sql = "SELECT COUNT(*) FROM users WHERE id = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
         return count != null && count > 0;

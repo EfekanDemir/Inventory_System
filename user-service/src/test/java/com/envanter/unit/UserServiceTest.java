@@ -3,11 +3,11 @@ package com.envanter.unit;
 import com.envanter.user.dto.LoginRequest;
 import com.envanter.user.dto.RegisterRequest;
 import com.envanter.user.dto.UserDTO;
-import com.envanter.user.exception.ConflictException;
+
 import com.envanter.user.exception.UnauthorizedException;
 import com.envanter.user.model.User;
 import com.envanter.user.repository.UserRepository;
-import com.envanter.user.security.JwtTokenProvider;
+import com.envanter.common.security.JwtTokenProvider;
 import com.envanter.user.security.RedisSessionService;
 import com.envanter.user.service.UserServiceImpl;
 import com.envanter.user.util.UserMapper;
@@ -21,7 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -100,7 +100,7 @@ class UserServiceTest {
 
         when(userRepository.findByUsername("oktaytest")).thenReturn(Optional.of(existingUser));
         when(passwordEncoder.matches("SecurePass123!", "$2a$10$hashedPassword")).thenReturn(true);
-        when(jwtTokenProvider.generateToken(existingUser)).thenReturn("mocktoken");
+        when(jwtTokenProvider.generateToken(anyLong(), anyString(), anyString())).thenReturn("mocktoken");
 
         UserDTO dto = new UserDTO();
         dto.setUsername("oktaytest");
@@ -112,7 +112,7 @@ class UserServiceTest {
         assertEquals("mocktoken", result.getToken());
         assertEquals("oktaytest", result.getUsername());
 
-        verify(jwtTokenProvider, times(1)).generateToken(existingUser);
+        verify(jwtTokenProvider, times(1)).generateToken(anyLong(), anyString(), anyString());
     }
 
     @Test

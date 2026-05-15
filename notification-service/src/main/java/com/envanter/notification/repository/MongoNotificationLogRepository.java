@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.lang.NonNull;
 
 /**
  * NotificationLog için MongoTemplate tabanlı repository implementasyonu.
@@ -29,7 +30,7 @@ public class MongoNotificationLogRepository implements NotificationLogRepository
     // -- NotificationLogRepository impl ---------------------------------------
 
     @Override
-    public NotificationLog save(NotificationLog log) {
+    public NotificationLog save(@NonNull NotificationLog log) {
         if (log.getSentAt() == null) {
             log.setSentAt(LocalDateTime.now());
         }
@@ -44,21 +45,21 @@ public class MongoNotificationLogRepository implements NotificationLogRepository
     }
 
     @Override
-    public List<NotificationLog> findByType(String notificationType) {
+    public List<NotificationLog> findByType(@NonNull String notificationType) {
         Query query = Query.query(Criteria.where("notification_type").is(notificationType))
                 .with(Sort.by(Sort.Direction.DESC, "sent_at"));
         return mongoTemplate.find(query, NotificationLog.class);
     }
 
     @Override
-    public List<NotificationLog> findByStatus(String status) {
+    public List<NotificationLog> findByStatus(@NonNull String status) {
         Query query = Query.query(Criteria.where("status").is(status))
                 .with(Sort.by(Sort.Direction.DESC, "sent_at"));
         return mongoTemplate.find(query, NotificationLog.class);
     }
 
     @Override
-    public List<NotificationLog> findByRecipientEmail(String email) {
+    public List<NotificationLog> findByRecipientEmail(@NonNull String email) {
         Query query = Query.query(Criteria.where("recipient_email").is(email))
                 .with(Sort.by(Sort.Direction.DESC, "sent_at"));
         return mongoTemplate.find(query, NotificationLog.class);
@@ -69,14 +70,14 @@ public class MongoNotificationLogRepository implements NotificationLogRepository
     /**
      * ID'ye göre tek kayıt getirir.
      */
-    public Optional<NotificationLog> findById(String id) {
+    public Optional<NotificationLog> findById(@NonNull String id) {
         return Optional.ofNullable(mongoTemplate.findById(id, NotificationLog.class));
     }
 
     /**
      * Bildirim tipi ve durumuna göre kombine filtre.
      */
-    public List<NotificationLog> findByTypeAndStatus(String type, String status) {
+    public List<NotificationLog> findByTypeAndStatus(@NonNull String type, @NonNull String status) {
         Query query = Query.query(
                 Criteria.where("notification_type").is(type)
                         .and("status").is(status)
@@ -87,7 +88,7 @@ public class MongoNotificationLogRepository implements NotificationLogRepository
     /**
      * Belirtilen tarih aralığında gönderilen bildirimleri getirir.
      */
-    public List<NotificationLog> findBySentAtBetween(LocalDateTime from, LocalDateTime to) {
+    public List<NotificationLog> findBySentAtBetween(@NonNull LocalDateTime from, @NonNull LocalDateTime to) {
         Query query = Query.query(
                 Criteria.where("sent_at").gte(from).lte(to)
         ).with(Sort.by(Sort.Direction.DESC, "sent_at"));
@@ -97,7 +98,7 @@ public class MongoNotificationLogRepository implements NotificationLogRepository
     /**
      * Belirli bir kaydı siler.
      */
-    public void deleteById(String id) {
+    public void deleteById(@NonNull String id) {
         Query query = Query.query(Criteria.where("_id").is(id));
         mongoTemplate.remove(query, NotificationLog.class);
     }
@@ -105,7 +106,7 @@ public class MongoNotificationLogRepository implements NotificationLogRepository
     /**
      * ID'ye göre kayıt var mı?
      */
-    public boolean existsById(String id) {
+    public boolean existsById(@NonNull String id) {
         Query query = Query.query(Criteria.where("_id").is(id));
         return mongoTemplate.exists(query, NotificationLog.class);
     }

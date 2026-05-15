@@ -1,7 +1,6 @@
 package com.envanter.user.service;
 
 import com.envanter.user.dto.LoginRequest;
-import com.envanter.user.dto.LoginResponse;
 import com.envanter.user.dto.RegisterRequest;
 import com.envanter.user.dto.UserDTO;
 
