@@ -3,58 +3,111 @@ package com.envanter.android;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.envanter.android.api.ApiClient;
+import com.envanter.android.api.ApiService;
+import com.envanter.android.api.GenericResponse;
+import com.envanter.android.model.CategoryDTO;
+import com.envanter.android.model.ItemDTO;
+import com.envanter.android.model.StockReportDTO;
 import com.envanter.android.util.ApiErrorHandler;
 import com.envanter.mobile.model.ItemStock;
-import com.envanter.mobile.view.CategoryPieChartView;
 import com.envanter.mobile.view.StockLevelBarChartView;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class DashboardActivity extends AppCompatActivity {
 
     private StockLevelBarChartView stockBarChart;
-    private CategoryPieChartView categoryPieChart;
+    private TextView tvTotalItems, tvLowStockCount, tvCategoryCount;
+    private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dashboard);
 
-        // --- Navigation (Yonlendirme Butonlari) ---
         Button btnEnvanterList = findViewById(R.id.btnEnvanterList);
+        Button btnMovements = findViewById(R.id.btnMovements);
         Button btnLogout = findViewById(R.id.btnLogout);
-
-        if (btnEnvanterList != null) {
-            btnEnvanterList.setOnClickListener(v -> {
-                startActivity(new Intent(DashboardActivity.this, EnvanterListActivity.class));
-            });
-        }
-
-        if (btnLogout != null) {
-            btnLogout.setOnClickListener(v -> ApiErrorHandler.logout(this));
-        }
-
-        // --- Bar Chart ---
+        tvTotalItems = findViewById(R.id.tvTotalItems);
+        tvLowStockCount = findViewById(R.id.tvLowStockCount);
+        tvCategoryCount = findViewById(R.id.tvCategoryCount);
         stockBarChart = findViewById(R.id.stockBarChart);
-        if (stockBarChart != null) {
-            List<ItemStock> mockItems = new ArrayList<>();
-            mockItems.add(new ItemStock("Laptop", 50, 20));
-            mockItems.add(new ItemStock("Mouse", 25, 20));
-            mockItems.add(new ItemStock("Klavye", 5, 10));
-            mockItems.add(new ItemStock("Monitör", 12, 10));
-            mockItems.add(new ItemStock("Kablo", 100, 50));
-            stockBarChart.setItems(mockItems);
-        }
 
-        // --- Pie Chart ---
-        categoryPieChart = findViewById(R.id.categoryPieChart);
-        if (categoryPieChart != null) {
-            float[] percentages = {40.5f, 25.0f, 15.0f, 10.0f, 7.5f, 2.0f};
-            String[] categories = {"Elektronik", "Sarf Malzemesi", "Mobilya", "Yazılım", "Temizlik", "Diğer"};
-            categoryPieChart.setData(percentages, categories);
-        }
+        if (btnEnvanterList != null)
+            btnEnvanterList.setOnClickListener(v ->
+                startActivity(new Intent(this, EnvanterListActivity.class)));
+        if (btnMovements != null)
+            btnMovements.setOnClickListener(v ->
+                startActivity(new Intent(this, StockMovementsActivity.class)));
+        if (btnLogout != null)
+            btnLogout.setOnClickListener(v -> ApiErrorHandler.logout(this));
+
+        apiService = ApiClient.getClient(this).create(ApiService.class);
+
+        loadStockReport();
+        loadCategories();
+        loadItemsForChart();
+    }
+
+    private void loadStockReport() {
+        apiService.getStockReport().enqueue(new Callback<GenericResponse<StockReportDTO>>() {
+            @Override
+            public void onResponse(Call<GenericResponse<StockReportDTO>> call, Response<GenericResponse<StockReportDTO>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
+                    StockReportDTO report = response.body().getData();
+                    runOnUiThread(() -> {
+                        if (tvTotalItems != null) tvTotalItems.setText(String.valueOf(report.getActiveItems()));
+                        if (tvLowStockCount != null) tvLowStockCount.setText(String.valueOf(report.getLowStockItems()));
+                    });
+                }
+            }
+            @Override
+            public void onFailure(Call<GenericResponse<StockReportDTO>> call, Throwable t) {}
+        });
+    }
+
+    private void loadCategories() {
+        apiService.getCategories().enqueue(new Callback<GenericResponse<List<CategoryDTO>>>() {
+            @Override
+            public void onResponse(Call<GenericResponse<List<CategoryDTO>>> call, Response<GenericResponse<List<CategoryDTO>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
+                    int count = response.body().getData().size();
+                    runOnUiThread(() -> {
+                        if (tvCategoryCount != null) tvCategoryCount.setText(String.valueOf(count));
+                    });
+                }
+            }
+            @Override
+            public void onFailure(Call<GenericResponse<List<CategoryDTO>>> call, Throwable t) {}
+        });
+    }
+
+    private void loadItemsForChart() {
+        apiService.getItems(null, null).enqueue(new Callback<GenericResponse<List<ItemDTO>>>() {
+            @Override
+            public void onResponse(Call<GenericResponse<List<ItemDTO>>> call, Response<GenericResponse<List<ItemDTO>>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
+                    List<ItemDTO> items = response.body().getData();
+                    List<ItemStock> chartItems = new ArrayList<>();
+                    for (ItemDTO item : items) {
+                        chartItems.add(new ItemStock(item.getName(), item.getQuantity(), item.getMinStockLevel()));
+                    }
+                    runOnUiThread(() -> {
+                        if (stockBarChart != null) stockBarChart.setItems(chartItems);
+                    });
+                }
+            }
+            @Override
+            public void onFailure(Call<GenericResponse<List<ItemDTO>>> call, Throwable t) {}
+        });
     }
 }

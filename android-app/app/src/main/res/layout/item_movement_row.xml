@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="6dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="3dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/ivMovementType"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_sort_alphabetically"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
+
+        <TextView
+            android:id="@+id/tvMovementReason"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Yeni Mal Kabul"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginStart="16dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toEndOf="@id/ivMovementType"
+            app:layout_constraintEnd_toStartOf="@id/tvMovementQuantity"/>
+
+        <TextView
+            android:id="@+id/tvMovementDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="14 May 2026, 18:05"
+            android:textSize="12sp"
+            android:textColor="#757575"
+            android:layout_marginTop="2dp"
+            app:layout_constraintTop_toBottomOf="@id/tvMovementReason"
+            app:layout_constraintStart_toStartOf="@id/tvMovementReason"/>
+
+        <TextView
+            android:id="@+id/tvAssignedTo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kime: -"
+            android:textSize="12sp"
+            android:textColor="#1976D2"
+            android:layout_marginTop="2dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/tvMovementDate"
+            app:layout_constraintStart_toStartOf="@id/tvMovementReason"/>
+
+        <TextView
+            android:id="@+id/tvReturnDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="İade: -"
+            android:textSize="12sp"
+            android:textColor="#D32F2F"
+            android:layout_marginTop="2dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/tvAssignedTo"
+            app:layout_constraintStart_toStartOf="@id/tvMovementReason"/>
+
+        <TextView
+            android:id="@+id/tvMovementQuantity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+50"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#4CAF50"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.cardview.widget.CardView>

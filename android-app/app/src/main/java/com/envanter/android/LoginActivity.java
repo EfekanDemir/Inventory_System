@@ -30,14 +30,12 @@ public class LoginActivity extends AppCompatActivity {
     private TextInputEditText etUsername, etPassword;
     private MaterialButton btnLogin;
     private ProgressBar progressBar;
-    private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // View'lari bagla
         tilUsername = findViewById(R.id.tilUsername);
         tilPassword = findViewById(R.id.tilPassword);
         etUsername = findViewById(R.id.etUsername);
@@ -45,27 +43,15 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         progressBar = findViewById(R.id.progressBar);
 
-        apiService = ApiClient.getClient().create(ApiService.class);
-
         btnLogin.setOnClickListener(v -> performLogin());
-
-        // Eski verileri temizle (Test icin)
-        // clearOldSession(); 
     }
 
     private void performLogin() {
         String username = etUsername.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
 
-        tilUsername.setError(null);
-        tilPassword.setError(null);
-
-        if (username.isEmpty()) {
-            tilUsername.setError("Kullanıcı adı boş olamaz");
-            return;
-        }
-        if (password.isEmpty()) {
-            tilPassword.setError("Şifre boş olamaz");
+        if (username.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Lütfen tüm alanları doldurun", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -73,7 +59,8 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin.setEnabled(false);
 
         LoginRequest request = new LoginRequest(username, password);
-        apiService.login(request).enqueue(new Callback<GenericResponse<UserDTO>>() {
+        // Login sirasinda context göndererek ApiClient'i baslatiyoruz
+        ApiClient.getClient(this).create(ApiService.class).login(request).enqueue(new Callback<GenericResponse<UserDTO>>() {
             @Override
             public void onResponse(Call<GenericResponse<UserDTO>> call, Response<GenericResponse<UserDTO>> response) {
                 progressBar.setVisibility(View.GONE);
@@ -81,21 +68,23 @@ public class LoginActivity extends AppCompatActivity {
 
                 if (response.isSuccessful() && response.body() != null && response.body().getData() != null) {
                     saveToken(response.body().getData().getToken());
+                    
+                    // KRITIK: Login basarili olunca eski (tokensiz) client'i temizle
+                    ApiClient.clearClient();
+                    
                     Toast.makeText(LoginActivity.this, "Giriş Başarılı!", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(LoginActivity.this, DashboardActivity.class));
                     finish();
                 } else {
-                    // Artik ApiErrorHandler "Sifre hatali" diyecek
                     ApiErrorHandler.handleError(LoginActivity.this, response.code());
                 }
             }
 
             @Override
             public void onFailure(Call<GenericResponse<UserDTO>> call, Throwable t) {
-                Log.e("LOGIN_FAIL", "Hata: ", t);
                 progressBar.setVisibility(View.GONE);
                 btnLogin.setEnabled(true);
-                Toast.makeText(LoginActivity.this, "Bağlantı Hatası: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(LoginActivity.this, "Bağlantı Hatası", Toast.LENGTH_SHORT).show();
             }
         });
     }

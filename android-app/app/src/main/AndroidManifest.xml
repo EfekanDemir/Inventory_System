@@ -9,7 +9,8 @@
         android:label="Envanter"
         android:supportsRtl="true"
         android:theme="@style/Theme.Envanter"
-        android:usesCleartextTraffic="true"> <!-- Emulator icin localhost erisimi (http) -->
+        android:hardwareAccelerated="false"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".LoginActivity"
@@ -22,6 +23,7 @@
 
         <activity android:name=".DashboardActivity" />
         <activity android:name=".EnvanterListActivity" />
+        <activity android:name=".StockMovementsActivity" />
 
     </application>
 

@@ -31,6 +31,7 @@ public class StockLevelBarChartView extends View {
     private final int COLOR_RED = Color.parseColor("#F44336");
 
     private float animationProgress = 0f;
+    private int maxQuantity = 10;
 
     public StockLevelBarChartView(Context context) {
         super(context);
@@ -43,6 +44,9 @@ public class StockLevelBarChartView extends View {
     }
 
     private void init() {
+        // Siyah ekran sorununu onlemek icin yazilimsal cizim modunu zorunlu kiliyoruz.
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+
         // Paint nesneleri onDraw icinde kesinlikle new ile uretilmemelidir, burada initialize edilir.
         barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         barPaint.setStyle(Paint.Style.FILL);
@@ -70,6 +74,14 @@ public class StockLevelBarChartView extends View {
 
     public void setItems(List<ItemStock> items) {
         this.items = items;
+        this.maxQuantity = 0;
+        if (items != null) {
+            for (ItemStock item : items) {
+                if (item.getQuantity() > maxQuantity) maxQuantity = item.getQuantity();
+                if (item.getMinStockLevel() * 2 > maxQuantity) maxQuantity = item.getMinStockLevel() * 2;
+            }
+        }
+        if (this.maxQuantity == 0) this.maxQuantity = 10;
         startAnimation();
     }
 
@@ -118,9 +130,16 @@ public class StockLevelBarChartView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas); // onDraw icinde "new" kullanimi yapilmamistir (Optimization)
+        super.onDraw(canvas);
 
-        if (items == null || items.isEmpty()) return;
+        if (items == null || items.isEmpty()) {
+            Paint infoPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            infoPaint.setColor(Color.GRAY);
+            infoPaint.setTextAlign(Paint.Align.CENTER);
+            infoPaint.setTextSize(40f);
+            canvas.drawText("Veri bulunamadı", getWidth() / 2f, getHeight() / 2f, infoPaint);
+            return;
+        }
 
         int width = getWidth();
         int height = getHeight();
@@ -135,13 +154,7 @@ public class StockLevelBarChartView extends View {
         canvas.drawLine(paddingLeft, paddingTop, paddingLeft, height - paddingBottom, axisPaint); // Y ekseni
         canvas.drawLine(paddingLeft, height - paddingBottom, width - paddingRight, height - paddingBottom, axisPaint); // X ekseni
 
-        // Y ekseni icin max degeri bul
-        int maxQuantity = 0;
-        for (ItemStock item : items) {
-            if (item.getQuantity() > maxQuantity) maxQuantity = item.getQuantity();
-            if (item.getMinStockLevel() * 2 > maxQuantity) maxQuantity = item.getMinStockLevel() * 2;
-        }
-        if (maxQuantity == 0) maxQuantity = 10; // Default
+        // maxQuantity artik setItems icinde onceden hesaplaniyor (Optimization)
 
         float graphHeight = height - paddingBottom - paddingTop;
         float graphWidth = width - paddingLeft - paddingRight;
@@ -167,7 +180,8 @@ public class StockLevelBarChartView extends View {
             float bottom = height - paddingBottom;
             
             // Stok miktarinin boyu (Animasyonla yukselir)
-            float ratio = (float) item.getQuantity() / maxQuantity;
+            float ratio = maxQuantity > 0 ? (float) item.getQuantity() / maxQuantity : 0f;
+            if (ratio > 1f) ratio = 1f; // Gorunumu bozmamasi icin ustten sinirla
             float top = bottom - (graphHeight * ratio * animationProgress);
 
             // Bar'i ciz

@@ -3,38 +3,48 @@ package com.envanter.android.util;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.util.Log;
 import android.widget.Toast;
-
 import com.envanter.android.LoginActivity;
 
 public class ApiErrorHandler {
 
     public static void handleError(Context context, int statusCode) {
+        handleError(context, statusCode, null);
+    }
+
+    public static void handleError(Context context, int statusCode, String customMessage) {
+        String baseMessage;
         switch (statusCode) {
             case 401:
                 if (context instanceof LoginActivity) {
-                    Toast.makeText(context, "Kullanıcı adı veya şifre hatalı.", Toast.LENGTH_LONG).show();
+                    baseMessage = "Kullanıcı adı veya şifre hatalı.";
                 } else {
-                    Toast.makeText(context, "Oturum süresi doldu. Lütfen tekrar giriş yapın.", Toast.LENGTH_LONG).show();
+                    baseMessage = "Oturum süresi doldu. Lütfen tekrar giriş yapın.";
                     logout(context);
                 }
                 break;
             case 403:
-                Toast.makeText(context, "Bu işlem için yetkiniz yok (403).", Toast.LENGTH_SHORT).show();
+                baseMessage = "Bu işlem için yetkiniz yok (403).";
                 break;
             case 404:
-                Toast.makeText(context, "Kayıt bulunamadı (404).", Toast.LENGTH_SHORT).show();
-                break;
-            case 409:
-                Toast.makeText(context, "Yetersiz stok veya çakışan işlem (409).", Toast.LENGTH_SHORT).show();
+                baseMessage = "Kayıt bulunamadı (404).";
                 break;
             case 500:
-                Toast.makeText(context, "Sunucu hatası. Lütfen daha sonra tekrar deneyin.", Toast.LENGTH_SHORT).show();
+                baseMessage = "Sunucu hatası.";
                 break;
             default:
-                Toast.makeText(context, "Bilinmeyen bir hata oluştu: " + statusCode, Toast.LENGTH_SHORT).show();
+                baseMessage = "Hata kodu: " + statusCode;
                 break;
         }
+
+        String finalMessage = (customMessage != null) ? customMessage + ": " + baseMessage : baseMessage;
+        Toast.makeText(context, finalMessage, Toast.LENGTH_LONG).show();
+    }
+
+    public static void handleFailure(Context context, Throwable t) {
+        Log.e("ApiErrorHandler", "Network failure", t);
+        Toast.makeText(context, "Bağlantı hatası: Sunucuya ulaşılamıyor.", Toast.LENGTH_LONG).show();
     }
 
     public static void logout(Context context) {

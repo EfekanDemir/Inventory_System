@@ -7,7 +7,6 @@
     android:background="@color/colorBackground">
 
     <androidx.cardview.widget.CardView
-        android:id="@+id/toolbarCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:cardCornerRadius="0dp"
@@ -23,15 +22,24 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Envanter"
+                android:text="Stok Hareket Geçmişi"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="@color/colorTextPrimary" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnClearHistory"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="Temizle"
+                android:textSize="13sp"
+                app:strokeColor="@color/colorError"
+                android:textColor="@color/colorError"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
     <ProgressBar
-        android:id="@+id/progressBar"
+        android:id="@+id/pbMovements"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
@@ -39,26 +47,17 @@
         android:layout_gravity="center" />
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipeRefreshLayout"
+        android:id="@+id/swipeRefreshMovements"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="60dp">
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvEnvanterList"
+            android:id="@+id/rvMovements"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
             android:paddingTop="8dp"
-            android:paddingBottom="80dp" />
+            android:paddingBottom="16dp" />
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAddItem"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:contentDescription="Ürün Ekle"
-        app:srcCompat="@android:drawable/ic_input_add" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
